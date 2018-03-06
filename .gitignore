@@ -1,6 +1,7 @@
 target/
 *~
 TODO.txt
+*-gh/
 *.osm
 nbactions*.xml
 config.properties

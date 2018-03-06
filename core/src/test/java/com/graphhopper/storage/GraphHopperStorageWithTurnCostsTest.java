@@ -133,27 +133,4 @@ public class GraphHopperStorageWithTurnCostsTest extends GraphHopperStorageTest 
         assertEquals(112, turnCostStorage.getCapacity() / 16);
     }
 
-    @Test
-    public void test() {
-        final CmdArgs config = new CmdArgs();
-        config.put("graph.flag_encoders", "car|turn_costs=true")
-                .put("prepare.ch.weightings", "weighting_with_penalties,fastest")
-                .put("graph.dataaccess", "RAM_STORE")
-                .put("graph.location", "./src/test/resources/delaware-gh");
-
-        GraphHopper graphHopper = new GraphHopper();
-        graphHopper.init(config);
-        graphHopper.importOrLoad();
-        GHRequest request = new GHRequest(39.043914, -75.687579, 39.116110, -75.753882);
-        request.getHints().put("weighting", "weighting_with_penalties");
-        final GHResponse routeWithTurnPenalties = graphHopper.route(request);
-
-        GHRequest request2 = new GHRequest(39.043914, -75.687579, 39.116110, -75.753882);
-        request2.getHints().put("weighting", "fastest");
-        final GHResponse routeWithoutTurnPenalties = graphHopper.route(request2);
-        graphHopper.close();
-        assertTrue(routeWithoutTurnPenalties.getBest().getPoints().size() > routeWithTurnPenalties.getBest().getPoints().size()
-        || (routeWithoutTurnPenalties.getBest().getPoints().size() == routeWithTurnPenalties.getBest().getPoints().size() && routeWithoutTurnPenalties.getBest().getRouteWeight() < routeWithTurnPenalties.getBest().getRouteWeight()));
-    }
-
 }
