@@ -979,7 +979,7 @@ public class GraphHopper implements GraphHopperAPI {
             request.setVehicle(vehicle);
         }
 
-        Lock readLock = readWriteLock.readLock();
+        Lock readLock = readWriteLock.writeLock();
         readLock.lock();
         try {
             if (!encodingManager.supports(vehicle))
