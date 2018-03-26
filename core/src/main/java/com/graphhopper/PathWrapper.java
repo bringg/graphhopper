@@ -22,6 +22,8 @@ import com.graphhopper.util.PathMerger;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.shapes.BBox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -33,6 +35,7 @@ import java.util.*;
  * @author Peter Karich
  */
 public class PathWrapper {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PathWrapper.class);
     private final List<Throwable> errors = new ArrayList<Throwable>(4);
     private List<String> description;
     private double distance;
@@ -194,6 +197,7 @@ public class PathWrapper {
 
     public PathWrapper setRouteWeight(double weight) {
         this.routeWeight = weight;
+        LOGGER.info("Setting route weight, Thread:[{}], weight:[{}]", Thread.currentThread().getName(),weight);
         return this;
     }
 
