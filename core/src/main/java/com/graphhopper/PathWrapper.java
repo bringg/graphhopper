@@ -196,8 +196,8 @@ public class PathWrapper {
     }
 
     public PathWrapper setRouteWeight(double weight) {
+        LOGGER.info("Setting route weight, Thread:[{}], prev weight: [{}], weight:[{}]", Thread.currentThread().getName(),this.routeWeight, weight);
         this.routeWeight = weight;
-        LOGGER.info("Setting route weight, Thread:[{}], weight:[{}]", Thread.currentThread().getName(),weight);
         return this;
     }
 
