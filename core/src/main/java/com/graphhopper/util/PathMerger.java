@@ -22,6 +22,8 @@ import com.graphhopper.routing.Path;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.details.PathDetailsBuilderFactory;
 import com.graphhopper.util.exceptions.ConnectionNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +43,7 @@ import java.util.List;
  * @author Robin Boldt
  */
 public class PathMerger {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PathMerger.class);
     private static final DouglasPeucker DP = new DouglasPeucker();
     private boolean enableInstructions = true;
     private boolean simplifyResponse = true;
@@ -86,6 +89,7 @@ public class PathMerger {
         InstructionList fullInstructions = new InstructionList(tr);
         PointList fullPoints = PointList.EMPTY;
         List<String> description = new ArrayList<>();
+        LOGGER.info("Number of paths: [{}]",paths.size());
         for (int pathIndex = 0; pathIndex < paths.size(); pathIndex++) {
             Path path = paths.get(pathIndex);
             if (!path.isFound()) {
@@ -95,6 +99,7 @@ public class PathMerger {
             description.addAll(path.getDescription());
             fullTimeInMillis += path.getTime();
             fullDistance += path.getDistance();
+            LOGGER.info("Weight before: [{}], weight after: [{}]",fullWeight, fullWeight+path.getWeight());
             fullWeight += path.getWeight();
             if (enableInstructions) {
                 InstructionList il = path.calcInstructions(tr);
