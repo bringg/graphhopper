@@ -126,6 +126,7 @@ public class PathMerger {
                 origPoints = fullPoints.size();
             }
 
+            altRsp.setEdgesData(path.calcEdgesData());
             allFound = allFound && path.isFound();
         }
 

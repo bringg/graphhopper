@@ -412,6 +412,21 @@ public class Path {
         return toString() + ", found:" + isFound() + ", " + str;
     }
 
+    public Map<PointList, Double> calcEdgesData() {
+        final Map<PointList, Double> edgesData = new HashMap<>();
+        forEveryEdge(new EdgeVisitor() {
+            @Override
+            public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
+                edgesData.put(eb.fetchWayGeometry(2), encoder.getSpeed(eb.getFlags()));
+            }
+
+            @Override
+            public void finish() {}
+        });
+
+        return edgesData;
+    }
+
     /**
      * The callback used in forEveryEdge.
      */

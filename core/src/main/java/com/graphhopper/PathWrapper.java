@@ -49,6 +49,7 @@ public class PathWrapper {
     private Map<String, List<PathDetail>> pathDetails = new HashMap<>();
     private BigDecimal fare;
     private boolean impossible = false;
+    private Map<PointList, Double> edgesData = new HashMap<>();
 
     /**
      * @return the description of this route alternative to make it meaningful for the user e.g. it
@@ -114,6 +115,10 @@ public class PathWrapper {
             throw new IllegalStateException("Cannot call setWaypoints twice");
 
         this.waypointList = wpList;
+    }
+
+    public void setEdgesData(Map<PointList, Double> edgesData) {
+        this.edgesData = edgesData;
     }
 
     /**
