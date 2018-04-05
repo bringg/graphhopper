@@ -121,6 +121,10 @@ public class PathWrapper {
         this.edgesData = edgesData;
     }
 
+    public Map<PointList, Double> getEdgesData() {
+        return edgesData;
+    }
+
     /**
      * This method returns the distance of the path. Always prefer this method over
      * getPoints().calcDistance
