@@ -50,7 +50,7 @@ public class PathWrapper {
     private Map<String, List<PathDetail>> pathDetails = new HashMap<>();
     private BigDecimal fare;
     private boolean impossible = false;
-    private Map<Coordinate, Double> edgesData = new HashMap<>();
+    private Map<Integer, Double> edgesData = new HashMap<>();
 
     /**
      * @return the description of this route alternative to make it meaningful for the user e.g. it
@@ -118,11 +118,11 @@ public class PathWrapper {
         this.waypointList = wpList;
     }
 
-    public void setEdgesData(Map<Coordinate, Double> edgesData) {
+    public void setEdgesData(Map<Integer, Double> edgesData) {
         this.edgesData = edgesData;
     }
 
-    public Map<Coordinate, Double> getEdgesData() {
+    public Map<Integer, Double> getEdgesData() {
         return edgesData;
     }
 

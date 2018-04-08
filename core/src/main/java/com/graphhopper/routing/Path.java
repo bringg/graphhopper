@@ -413,14 +413,12 @@ public class Path {
         return toString() + ", found:" + isFound() + ", " + str;
     }
 
-    public Map<Coordinate, Double> calcEdgesData() {
-        final Map<Coordinate, Double> edgesData = new HashMap<>();
+    public Map<Integer, Double> calcEdgesData() {
+        final Map<Integer, Double> edgesData = new HashMap<>();
         forEveryEdge(new EdgeVisitor() {
             @Override
             public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
-                final PointList points = eb.fetchWayGeometry(2);
-                for (int i = 0; i < points.size(); ++i)
-                    edgesData.put(new Coordinate(points.getLon(i), points.getLat(i)), encoder.getSpeed(eb.getFlags()));
+                edgesData.put(eb.getEdge(), encoder.getSpeed(eb.getFlags()));
             }
 
             @Override
