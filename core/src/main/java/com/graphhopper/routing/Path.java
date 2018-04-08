@@ -30,6 +30,7 @@ import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.details.PathDetailsBuilder;
 import com.graphhopper.util.details.PathDetailsBuilderFactory;
 import com.graphhopper.util.details.PathDetailsFromEdges;
+import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -394,6 +395,21 @@ public class Path {
         }
 
         return pathDetails;
+    }
+
+    public Map<Integer, Pair<Double, Double>> calcEdgesData() {
+        final Map<Integer, Pair<Double, Double>> edgesData = new HashMap<>();
+        forEveryEdge(new EdgeVisitor() {
+            @Override
+            public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
+                edgesData.put(eb.getEdge(), new Pair<>(encoder.getSpeed(eb.getFlags()), eb.getDistance()));
+            }
+
+            @Override
+            public void finish() {}
+        });
+
+        return edgesData;
     }
 
     @Override
