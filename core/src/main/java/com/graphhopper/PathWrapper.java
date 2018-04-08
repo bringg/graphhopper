@@ -22,6 +22,8 @@ import com.graphhopper.util.PathMerger;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.shapes.BBox;
+import com.sun.tools.javac.util.Pair;
+import com.vividsolutions.jts.geom.Coordinate;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -49,6 +51,7 @@ public class PathWrapper {
     private Map<String, List<PathDetail>> pathDetails = new HashMap<>();
     private BigDecimal fare;
     private boolean impossible = false;
+    private Map<Integer, Pair<Double, Double>> edgesData = new HashMap<>();
 
     /**
      * @return the description of this route alternative to make it meaningful for the user e.g. it
@@ -114,6 +117,14 @@ public class PathWrapper {
             throw new IllegalStateException("Cannot call setWaypoints twice");
 
         this.waypointList = wpList;
+    }
+
+    public void setEdgesData(Map<Integer, Pair<Double, Double>> edgesData) {
+        this.edgesData = edgesData;
+    }
+
+    public Map<Integer, Pair<Double, Double>> getEdgesData() {
+        return edgesData;
     }
 
     /**

@@ -1081,6 +1081,7 @@ public class GraphHopper implements GraphHopperAPI {
                 DouglasPeucker peucker = new DouglasPeucker().setMaxDistance(wayPointMaxDistance);
                 PathMerger pathMerger = new PathMerger().
                         setCalcPoints(tmpCalcPoints).
+                        setAddEdgesData(hints.getBool("add_edges_data", false)).
                         setDouglasPeucker(peucker).
                         setEnableInstructions(tmpEnableInstructions).
                         setPathDetailsBuilders(pathBuilderFactory, request.getPathDetails()).

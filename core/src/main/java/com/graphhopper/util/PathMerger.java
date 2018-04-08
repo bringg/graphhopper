@@ -46,12 +46,18 @@ public class PathMerger {
     private boolean simplifyResponse = true;
     private DouglasPeucker douglasPeucker = DP;
     private boolean calcPoints = true;
+    private boolean addEdgesData = false;
     private PathDetailsBuilderFactory pathBuilderFactory;
     private List<String> requestedPathDetails = Collections.EMPTY_LIST;
     private double favoredHeading = Double.NaN;
 
     public PathMerger setCalcPoints(boolean calcPoints) {
         this.calcPoints = calcPoints;
+        return this;
+    }
+
+    public PathMerger setAddEdgesData(boolean addEdgesData) {
+        this.addEdgesData = addEdgesData;
         return this;
     }
 
@@ -126,6 +132,8 @@ public class PathMerger {
                 origPoints = fullPoints.size();
             }
 
+            if (addEdgesData)
+                altRsp.setEdgesData(path.calcEdgesData());
             allFound = allFound && path.isFound();
         }
 
