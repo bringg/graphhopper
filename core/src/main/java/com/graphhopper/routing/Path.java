@@ -30,6 +30,7 @@ import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.details.PathDetailsBuilder;
 import com.graphhopper.util.details.PathDetailsBuilderFactory;
 import com.graphhopper.util.details.PathDetailsFromEdges;
+import com.sun.tools.javac.util.Pair;
 import com.vividsolutions.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -413,12 +414,12 @@ public class Path {
         return toString() + ", found:" + isFound() + ", " + str;
     }
 
-    public Map<Integer, Double> calcEdgesData() {
-        final Map<Integer, Double> edgesData = new HashMap<>();
+    public Map<Integer, Pair<Double, Double>> calcEdgesData() {
+        final Map<Integer, Pair<Double, Double>> edgesData = new HashMap<>();
         forEveryEdge(new EdgeVisitor() {
             @Override
             public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
-                edgesData.put(eb.getEdge(), encoder.getSpeed(eb.getFlags()));
+                edgesData.put(eb.getEdge(), new Pair<>(encoder.getSpeed(eb.getFlags()), eb.getDistance()));
             }
 
             @Override
