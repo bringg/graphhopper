@@ -17,11 +17,13 @@
  */
 package com.graphhopper;
 
+import com.graphhopper.routing.Path;
 import com.graphhopper.util.InstructionList;
 import com.graphhopper.util.PathMerger;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.shapes.BBox;
+import javafx.util.Pair;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -49,6 +51,7 @@ public class PathWrapper {
     private Map<String, List<PathDetail>> pathDetails = new HashMap<>();
     private BigDecimal fare;
     private boolean impossible = false;
+    private Map<Integer, Path.EdgeData> edgesData = new HashMap<>();
 
     /**
      * @return the description of this route alternative to make it meaningful for the user e.g. it
@@ -294,6 +297,14 @@ public class PathWrapper {
     public PathWrapper addErrors(List<Throwable> errors) {
         this.errors.addAll(errors);
         return this;
+    }
+
+    public void setEdgesData(Map<Integer, Path.EdgeData> edgesData) {
+        this.edgesData = edgesData;
+    }
+
+    public Map<Integer, Path.EdgeData> getEdgesData() {
+        return edgesData;
     }
 
     public void setNumChanges(int numChanges) {

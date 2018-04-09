@@ -396,6 +396,21 @@ public class Path {
         return pathDetails;
     }
 
+    public Map<Integer, EdgeData> calcEdgesData() {
+        final Map<Integer, EdgeData> edgesData = new HashMap<>();
+        forEveryEdge(new EdgeVisitor() {
+            @Override
+            public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
+                edgesData.put(eb.getEdge(), new EdgeData(eb.getDistance(), encoder.getSpeed(eb.getFlags())));
+            }
+
+            @Override
+            public void finish() {}
+        });
+
+        return edgesData;
+    }
+
     @Override
     public String toString() {
         return "distance:" + getDistance() + ", edges:" + edgeIds.size();
@@ -419,5 +434,15 @@ public class Path {
         void next(EdgeIteratorState edge, int index, int prevEdgeId);
 
         void finish();
+    }
+
+    public static class EdgeData {
+        public final double distance;
+        public final double speed;
+
+        public EdgeData(double distance, double speed) {
+            this.distance = distance;
+            this.speed = speed;
+        }
     }
 }
