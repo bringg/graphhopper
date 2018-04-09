@@ -17,6 +17,7 @@
  */
 package com.graphhopper;
 
+import com.graphhopper.routing.Path;
 import com.graphhopper.util.InstructionList;
 import com.graphhopper.util.PathMerger;
 import com.graphhopper.util.PointList;
@@ -50,7 +51,7 @@ public class PathWrapper {
     private Map<String, List<PathDetail>> pathDetails = new HashMap<>();
     private BigDecimal fare;
     private boolean impossible = false;
-    private Map<Integer, Pair<Double, Double>> edgesData = new HashMap<>();
+    private Map<Integer, Path.EdgeData> edgesData = new HashMap<>();
 
     /**
      * @return the description of this route alternative to make it meaningful for the user e.g. it
@@ -298,11 +299,11 @@ public class PathWrapper {
         return this;
     }
 
-    public void setEdgesData(Map<Integer, Pair<Double, Double>> edgesData) {
+    public void setEdgesData(Map<Integer, Path.EdgeData> edgesData) {
         this.edgesData = edgesData;
     }
 
-    public Map<Integer, Pair<Double, Double>> getEdgesData() {
+    public Map<Integer, Path.EdgeData> getEdgesData() {
         return edgesData;
     }
 
