@@ -971,6 +971,10 @@ public class GraphHopper implements GraphHopperAPI {
     /**
      * This method calculates the alternative path list using the low level Path objects.
      */
+    public List<Path> calcPaths(GHRequest request, GHResponse ghRsp) {
+        return calcPaths(request, ghRsp, new HashMap<EdgeData, Double>());
+    }
+
     public List<Path> calcPaths(GHRequest request, GHResponse ghRsp, Map<EdgeData, Double> edgesWeightFactors) {
         if (ghStorage == null || !fullyLoaded)
             throw new IllegalStateException("Do a successful call to load or importOrLoad before routing");
