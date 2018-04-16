@@ -1072,7 +1072,7 @@ public class GraphHopper implements GraphHopperAPI {
 
                 weighting = createTurnWeighting(queryGraph, weighting, tMode);
 
-                if (!edgesWeightFactors.isEmpty()) 
+                if (!edgesWeightFactors.isEmpty())
                     weighting = new WeightingsWithFactors(weighting, edgesWeightFactors);
 
                 AlgorithmOptions algoOpts = AlgorithmOptions.start().
