@@ -66,6 +66,7 @@ public class Path {
     private boolean found;
     private int fromNode = -1;
     private GHIntArrayList edgeIds;
+    private List<Boolean> reversedOrder;
     private double weight;
     private NodeAccess nodeAccess;
 
@@ -76,6 +77,7 @@ public class Path {
         this.weighting = weighting;
         this.encoder = weighting.getFlagEncoder();
         this.edgeIds = new GHIntArrayList();
+        this.reversedOrder = new ArrayList<>();
     }
 
     /**
@@ -110,6 +112,11 @@ public class Path {
 
     protected void addEdge(int edge) {
         edgeIds.add(edge);
+    }
+
+    protected void addEdge(int edge, boolean reverseOrder) {
+        edgeIds.add(edge);
+        reversedOrder.add(reverseOrder);
     }
 
     protected Path setEndNode(int end) {
@@ -215,15 +222,22 @@ public class Path {
 
     public Map<EdgeData, Double> calcEdgesData() {
         final Map<EdgeData, Double> edgesData = new HashMap<>();
-        forEveryEdge(new EdgeVisitor() {
+        EdgeVisitor edgeVisitor;
+        if (reversedOrder.isEmpty())
+            edgeVisitor = new EdgeVisitor() {
+                @Override
+                public void next(EdgeIteratorState eb, int index, int prevEdgeId) { edgesData.put(new EdgeData(eb.getEdge(), eb.getBaseNode(), eb.getAdjNode()), encoder.getSpeed(eb.getFlags())); }
+                @Override
+                public void finish() {}
+            };
+        else edgeVisitor = new EdgeVisitor() {
             @Override
-            public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
-                edgesData.put(new EdgeData(eb.getEdge(), eb.getBaseNode(), eb.getAdjNode()), encoder.getSpeed(eb.getFlags()));
-            }
-
+            public void next(EdgeIteratorState eb, int index, int prevEdgeId) { edgesData.put(reversedOrder.get(index) ? new EdgeData(eb.getEdge(), eb.getAdjNode(), eb.getBaseNode()) : new EdgeData(eb.getEdge(), eb.getBaseNode(), eb.getAdjNode()), encoder.getSpeed(eb.getFlags())); }
             @Override
             public void finish() {}
-        });
+        };
+
+        forEveryEdge(edgeVisitor);
         return edgesData;
     }
 

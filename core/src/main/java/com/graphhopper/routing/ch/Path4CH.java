@@ -50,7 +50,7 @@ public class Path4CH extends PathBidirRef {
         if (!mainEdgeState.isShortcut()) {
             distance += mainEdgeState.getDistance();
             time += weighting.calcMillis(mainEdgeState, reverse, EdgeIterator.NO_EDGE);
-            addEdge(mainEdgeState.getEdge());
+            addEdge(mainEdgeState.getEdge(), reverse);
             return;
         }
 
