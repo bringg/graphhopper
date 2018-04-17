@@ -213,12 +213,12 @@ public class Path {
         return setFound(true);
     }
 
-    public List<EdgeData> calcEdgesData() {
-        final List<EdgeData> edgesData = new ArrayList<>();
+    public Map<EdgeData, Double> calcEdgesData() {
+        final Map<EdgeData, Double> edgesData = new HashMap<>();
         forEveryEdge(new EdgeVisitor() {
             @Override
             public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
-                edgesData.add( new EdgeData(eb.getEdge(), eb.getBaseNode(), eb.getAdjNode()));
+                edgesData.put(new EdgeData(eb.getEdge(), eb.getBaseNode(), eb.getAdjNode()), encoder.getSpeed(eb.getFlags()));
             }
 
             @Override

@@ -50,7 +50,7 @@ public class PathWrapper {
     private Map<String, List<PathDetail>> pathDetails = new HashMap<>();
     private BigDecimal fare;
     private boolean impossible = false;
-    private final List<EdgeData> edgeData = new ArrayList<>();
+    private final Map<EdgeData, Double> edgeData = new HashMap<>();
 
     /**
      * @return the description of this route alternative to make it meaningful for the user e.g. it
@@ -326,11 +326,11 @@ public class PathWrapper {
         this.impossible = impossible;
     }
 
-    public void setEdgesData(List<EdgeData> edgeData) {
-        this.edgeData.addAll(edgeData);
+    public void setEdgesData(Map<EdgeData, Double> edgeData) {
+        this.edgeData.putAll(edgeData);
     }
 
-    public List<EdgeData> getEdgeData() {
+    public Map<EdgeData, Double> getEdgeData() {
         return edgeData;
     }
 }
