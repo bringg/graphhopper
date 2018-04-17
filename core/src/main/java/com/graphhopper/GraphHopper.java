@@ -1095,6 +1095,7 @@ public class GraphHopper implements GraphHopperAPI {
                 PathMerger pathMerger = new PathMerger().
                         setCalcPoints(tmpCalcPoints).
                         setDouglasPeucker(peucker).
+                        setAddEdgesData(hints.getBool("add_edges_data", false)).
                         setEnableInstructions(tmpEnableInstructions).
                         setPathDetailsBuilders(pathBuilderFactory, request.getPathDetails()).
                         setSimplifyResponse(simplifyResponse && wayPointMaxDistance > 0);

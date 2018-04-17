@@ -20,6 +20,7 @@ package com.graphhopper.routing;
 import com.carrotsearch.hppc.IntArrayList;
 import com.carrotsearch.hppc.IntIndexedContainer;
 import com.graphhopper.coll.GHIntArrayList;
+import com.graphhopper.routing.util.EdgeData;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.Graph;
@@ -210,6 +211,20 @@ public class Path {
         reverseOrder();
         extractSW.stop();
         return setFound(true);
+    }
+
+    public List<EdgeData> calcEdgesData() {
+        final List<EdgeData> edgesData = new ArrayList<>();
+        forEveryEdge(new EdgeVisitor() {
+            @Override
+            public void next(EdgeIteratorState eb, int index, int prevEdgeId) {
+                edgesData.add( new EdgeData(eb.getEdge(), eb.getBaseNode(), eb.getAdjNode()));
+            }
+
+            @Override
+            public void finish() {}
+        });
+        return edgesData;
     }
 
     /**
