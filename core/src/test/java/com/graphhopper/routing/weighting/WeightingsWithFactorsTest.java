@@ -1,11 +1,10 @@
 package com.graphhopper.routing.weighting;
 
+import com.graphhopper.routing.WeightFactorsGetter;
 import com.graphhopper.routing.util.EdgeData;
 import com.graphhopper.util.EdgeIteratorState;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 import static org.junit.Assert.*;
@@ -20,8 +19,13 @@ public class WeightingsWithFactorsTest {
         int edgeId = random.nextInt(), baseNode = random.nextInt(), adjNode = random.nextInt();
         double weight = 100 + random.nextDouble();
         final double factor =  1 - random.nextDouble();
-        Map<EdgeData, Double> edgesWeightFactors = new HashMap<>();
-        edgesWeightFactors.put(new EdgeData(edgeId, baseNode, adjNode), factor);
+
+        WeightFactorsGetter weightFactorsGetter = new WeightFactorsGetter() {
+            @Override
+            public double getFactor(EdgeIteratorState edgeState, boolean reverse) {
+                return !reverse ? factor : 1;
+            }
+        };
 
         EdgeIteratorState edgeIteratorState = mock(EdgeIteratorState.class);
         Weighting weighting = mock(Weighting.class);
@@ -32,7 +36,7 @@ public class WeightingsWithFactorsTest {
         when(weighting.calcWeight(edgeIteratorState, false, 1)).thenReturn(weight);
         when(weighting.calcWeight(edgeIteratorState, true, 1)).thenReturn(weight);
 
-        final WeightingsWithFactors weightingsWithFactors = new WeightingsWithFactors(weighting, edgesWeightFactors);
+        final WeightingsWithFactors weightingsWithFactors = new WeightingsWithFactors(weighting, weightFactorsGetter);
         assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, false, 1), weight * factor, .001);
         assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, true, 1), weight, .001);
     }
@@ -42,8 +46,12 @@ public class WeightingsWithFactorsTest {
         int edgeId = random.nextInt(), baseNode = random.nextInt(), adjNode = random.nextInt();
         double weight = random.nextDouble();
         final double factor = random.nextDouble();
-        Map<EdgeData, Double> edgesWeightFactors = new HashMap<>();
-        edgesWeightFactors.put(new EdgeData(edgeId, adjNode, baseNode), factor);
+        WeightFactorsGetter weightFactorsGetter = new WeightFactorsGetter() {
+            @Override
+            public double getFactor(EdgeIteratorState edgeState, boolean reverse) {
+                return reverse ? factor : 1;
+            }
+        };
 
         EdgeIteratorState edgeIteratorState = mock(EdgeIteratorState.class);
         Weighting weighting = mock(Weighting.class);
@@ -54,7 +62,7 @@ public class WeightingsWithFactorsTest {
         when(weighting.calcWeight(edgeIteratorState, true, 1)).thenReturn(weight);
         when(weighting.calcWeight(edgeIteratorState, false, 1)).thenReturn(weight);
 
-        final WeightingsWithFactors weightingsWithFactors = new WeightingsWithFactors(weighting, edgesWeightFactors);
+        final WeightingsWithFactors weightingsWithFactors = new WeightingsWithFactors(weighting, weightFactorsGetter);
 
         assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, true, 1), weight * factor, .001);
         assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, false, 1), weight, .001);

@@ -23,6 +23,7 @@ import com.graphhopper.*;
 import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.routing.QueryGraph;
 import com.graphhopper.routing.VirtualEdgeIteratorState;
+import com.graphhopper.routing.WeightFactorsGetter;
 import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks;
 import com.graphhopper.routing.util.EdgeData;
 import com.graphhopper.routing.util.EncodingManager;
@@ -372,7 +373,7 @@ public final class GraphHopperGtfs implements GraphHopperAPI {
     }
 
     @Override
-    public GHResponse route(GHRequest request, Map<EdgeData, Double> edgesWeightFactors) {
+    public GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter) {
         return route(request);
     }
 

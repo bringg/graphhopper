@@ -24,6 +24,7 @@ import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopperAPI;
 import com.graphhopper.PathWrapper;
+import com.graphhopper.routing.WeightFactorsGetter;
 import com.graphhopper.routing.util.EdgeData;
 import com.graphhopper.util.*;
 import com.graphhopper.util.details.PathDetail;
@@ -411,7 +412,7 @@ public class GraphHopperWeb implements GraphHopperAPI {
     }
 
     @Override
-    public GHResponse route(GHRequest request, Map<EdgeData, Double> edgesWeightFactors) {
+    public GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter) {
         return route(request);
     }
     private OkHttpClient getClientForRequest(GHRequest request) {

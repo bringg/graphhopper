@@ -1,24 +1,16 @@
 package com.graphhopper.routing.weighting;
 
-import com.graphhopper.routing.util.EdgeData;
+import com.graphhopper.routing.WeightFactorsGetter;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.util.EdgeIteratorState;
 
-import java.util.Map;
-
-import static com.graphhopper.routing.util.EdgeData.getEdgeId;
-
 public class WeightingsWithFactors implements Weighting {
-    public void setWeighting(Weighting weighting) {
-        this.weighting = weighting;
-    }
-
     private Weighting weighting;
-    private final Map<EdgeData, Double> edgesWeightFactors;
+    private final WeightFactorsGetter weightFactorsGetter;
 
-    public WeightingsWithFactors(Weighting weighting, Map<EdgeData, Double> edgesWeightFactors) {
-        this.edgesWeightFactors = edgesWeightFactors;
+    public WeightingsWithFactors(Weighting weighting, WeightFactorsGetter weightFactorsGetter) {
+        this.weightFactorsGetter = weightFactorsGetter;
         this.weighting = weighting;
     }
 
@@ -29,17 +21,12 @@ public class WeightingsWithFactors implements Weighting {
 
     @Override
     public double calcWeight(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return weighting.calcWeight(edgeState, reverse, prevOrNextEdgeId) * getFactor(edgeState, reverse);
-    }
-
-    private double getFactor(EdgeIteratorState edgeState, boolean reverse) {
-        final EdgeData edgeData = reverse ? new EdgeData(getEdgeId(edgeState), edgeState.getAdjNode(), edgeState.getBaseNode()) : new EdgeData(getEdgeId(edgeState), edgeState.getBaseNode(), edgeState.getAdjNode());
-        return edgesWeightFactors.containsKey(edgeData) ? edgesWeightFactors.get(edgeData) : 1.0;
+        return weighting.calcWeight(edgeState, reverse, prevOrNextEdgeId) * weightFactorsGetter.getFactor(edgeState, reverse);
     }
 
     @Override
     public long calcMillis(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) * getFactor(edgeState, reverse));
+        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) * weightFactorsGetter.getFactor(edgeState, reverse));
     }
 
     @Override

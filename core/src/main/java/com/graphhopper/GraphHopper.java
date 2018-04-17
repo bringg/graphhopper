@@ -958,13 +958,13 @@ public class GraphHopper implements GraphHopperAPI {
 
     @Override
     public GHResponse route(GHRequest request) {
-        return route(request, new HashMap<EdgeData, Double>());
+        return route(request, null);
     }
 
     @Override
-    public GHResponse route(GHRequest request, Map<EdgeData, Double> edgesWeightFactors) {
+    public GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter) {
         GHResponse response = new GHResponse();
-        calcPaths(request, response, edgesWeightFactors);
+        calcPaths(request, response, weightFactorsGetter);
         return response;
     }
 
@@ -972,10 +972,10 @@ public class GraphHopper implements GraphHopperAPI {
      * This method calculates the alternative path list using the low level Path objects.
      */
     public List<Path> calcPaths(GHRequest request, GHResponse ghRsp) {
-        return calcPaths(request, ghRsp, new HashMap<EdgeData, Double>());
+        return calcPaths(request, ghRsp, null);
     }
 
-    public List<Path> calcPaths(GHRequest request, GHResponse ghRsp, Map<EdgeData, Double> edgesWeightFactors) {
+    public List<Path> calcPaths(GHRequest request, GHResponse ghRsp, WeightFactorsGetter weightFactorsGetter) {
         if (ghStorage == null || !fullyLoaded)
             throw new IllegalStateException("Do a successful call to load or importOrLoad before routing");
 
@@ -1076,11 +1076,9 @@ public class GraphHopper implements GraphHopperAPI {
 
                 weighting = createTurnWeighting(queryGraph, weighting, tMode);
 
-                if (!edgesWeightFactors.isEmpty())
-                    weighting = new WeightingsWithFactors(weighting, edgesWeightFactors);
-
                 AlgorithmOptions algoOpts = AlgorithmOptions.start().
                         algorithm(algoStr).traversalMode(tMode).weighting(weighting).
+                        weightingsFactorGetter(weightFactorsGetter).
                         maxVisitedNodes(maxVisitedNodesForRequest).
                         hints(hints).
                         build();

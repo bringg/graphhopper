@@ -17,6 +17,7 @@
  */
 package com.graphhopper;
 
+import com.graphhopper.routing.WeightFactorsGetter;
 import com.graphhopper.routing.util.EdgeData;
 
 import java.util.Map;
@@ -44,6 +45,6 @@ public interface GraphHopperAPI {
      * @return the response with the route and possible errors
      */
     GHResponse route(GHRequest request);
-    GHResponse route(GHRequest request, Map<EdgeData, Double> edgesWeightFactors);
+    GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter);
 
 }
