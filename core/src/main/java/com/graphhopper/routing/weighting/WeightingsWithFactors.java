@@ -10,7 +10,7 @@ import java.util.Map;
 import static com.graphhopper.routing.util.EdgeData.getEdgeId;
 
 public class WeightingsWithFactors implements Weighting {
-    private final Weighting weighting;
+    private Weighting weighting;
     private final Map<EdgeData, Double> edgesWeightFactors;
 
     public WeightingsWithFactors(Weighting weighting, Map<EdgeData, Double> edgesWeightFactors) {
@@ -51,5 +51,9 @@ public class WeightingsWithFactors implements Weighting {
     @Override
     public boolean matches(HintsMap map) {
         return weighting.matches(map);
+    }
+
+    public void setWeighting(Weighting weighting) {
+        this.weighting = weighting;
     }
 }
