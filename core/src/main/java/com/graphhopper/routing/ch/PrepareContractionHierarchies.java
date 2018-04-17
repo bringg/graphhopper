@@ -21,6 +21,7 @@ import com.graphhopper.coll.GHTreeMapComposed;
 import com.graphhopper.routing.*;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.routing.weighting.Weighting;
+import com.graphhopper.routing.weighting.WeightingsWithFactors;
 import com.graphhopper.storage.*;
 import com.graphhopper.util.*;
 import org.slf4j.Logger;
@@ -170,15 +171,22 @@ public class PrepareContractionHierarchies extends AbstractAlgoPreparation imple
     @Override
     public RoutingAlgorithm createAlgo(Graph graph, AlgorithmOptions opts) {
         AbstractBidirAlgo algo;
+
+        Weighting weighting = prepareWeighting;
+        if (opts.getWeighting() instanceof WeightingsWithFactors) {
+            weighting = opts.getWeighting();
+            ((WeightingsWithFactors) weighting).setWeighting(prepareWeighting);
+        }
+
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
-            AStarBidirection tmpAlgo = new AStarBidirectionCH(graph, prepareWeighting, traversalMode);
+            AStarBidirection tmpAlgo = new AStarBidirectionCH(graph, weighting, traversalMode);
             tmpAlgo.setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, graph.getNodeAccess()));
             algo = tmpAlgo;
         } else if (DIJKSTRA_BI.equals(opts.getAlgorithm())) {
             if (opts.getHints().getBool("stall_on_demand", true)) {
-                algo = new DijkstraBidirectionCH(graph, prepareWeighting, traversalMode);
+                algo = new DijkstraBidirectionCH(graph, weighting, traversalMode);
             } else {
-                algo = new DijkstraBidirectionCHNoSOD(graph, prepareWeighting, traversalMode);
+                algo = new DijkstraBidirectionCHNoSOD(graph, weighting, traversalMode);
             }
         } else {
             throw new IllegalArgumentException("Algorithm " + opts.getAlgorithm() + " not supported for Contraction Hierarchies. Try with ch.disable=true");
