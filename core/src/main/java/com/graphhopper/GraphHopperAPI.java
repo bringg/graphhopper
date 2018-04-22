@@ -18,9 +18,6 @@
 package com.graphhopper;
 
 import com.graphhopper.routing.WeightFactorsGetter;
-import com.graphhopper.routing.util.EdgeData;
-
-import java.util.Map;
 
 /**
  * Wrapper of the graphhopper online or offline API. Provides read only access.

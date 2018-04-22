@@ -1,7 +1,6 @@
 package com.graphhopper.routing.weighting;
 
 import com.graphhopper.routing.WeightFactorsGetter;
-import com.graphhopper.routing.util.EdgeData;
 import com.graphhopper.util.EdgeIteratorState;
 import org.junit.Test;
 
