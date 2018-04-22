@@ -49,9 +49,15 @@ public class PathMerger {
     private PathDetailsBuilderFactory pathBuilderFactory;
     private List<String> requestedPathDetails = Collections.EMPTY_LIST;
     private double favoredHeading = Double.NaN;
+    private boolean addEdgesData = false;
 
     public PathMerger setCalcPoints(boolean calcPoints) {
         this.calcPoints = calcPoints;
+        return this;
+    }
+
+    public PathMerger setAddEdgesData(boolean addEdgesData) {
+        this.addEdgesData = addEdgesData;
         return this;
     }
 
@@ -125,7 +131,8 @@ public class PathMerger {
                 altRsp.addPathDetails(path.calcDetails(requestedPathDetails, pathBuilderFactory, origPoints));
                 origPoints = fullPoints.size();
             }
-
+            if (addEdgesData)
+                altRsp.setEdgesData(path.calcEdgesData());
             allFound = allFound && path.isFound();
         }
 
