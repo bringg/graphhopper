@@ -988,8 +988,8 @@ public class GraphHopper implements GraphHopperAPI {
             request.setVehicle(vehicle);
         }
 
-        Lock readLock = readWriteLock.readLock();
-        readLock.lock();
+//        Lock readLock = readWriteLock.readLock();
+//        readLock.lock();
         try {
             if (!encodingManager.supports(vehicle))
                 throw new IllegalArgumentException("Vehicle " + vehicle + " unsupported. "
@@ -1109,7 +1109,7 @@ public class GraphHopper implements GraphHopperAPI {
             ghRsp.addError(ex);
             return Collections.emptyList();
         } finally {
-            readLock.unlock();
+//            readLock.unlock();
         }
     }
 
@@ -1235,7 +1235,7 @@ public class GraphHopper implements GraphHopperAPI {
         preparation.setMinOneWayNetworkSize(minOneWayNetworkSize);
         preparation.doWork();
         int currNodeCount = ghStorage.getNodes();
-        logger.info("edges: " + ghStorage.getAllEdges().getMaxId() + ", nodes " + currNodeCount
+        logger.info("edges: " + ghStorage.getAllEdges().length() + ", nodes " + currNodeCount
                 + ", there were " + preparation.getMaxSubnetworks()
                 + " subnetworks. removed them => " + (prevNodeCount - currNodeCount)
                 + " less nodes");
