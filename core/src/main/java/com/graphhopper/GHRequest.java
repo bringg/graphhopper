@@ -17,7 +17,9 @@
  */
 package com.graphhopper;
 
+import com.graphhopper.routing.WeightFactorsGetter;
 import com.graphhopper.routing.util.HintsMap;
+import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.util.Helper;
 import com.graphhopper.util.shapes.GHPoint;
 
@@ -43,6 +45,7 @@ public class GHRequest {
     private String algo = "";
     private boolean possibleToAdd = false;
     private Locale locale = Locale.US;
+    private WeightFactorsGetter weightFactorsGetter = null;
 
     public GHRequest() {
         this(5);
@@ -261,6 +264,16 @@ public class GHRequest {
 
     public List<String> getPathDetails() {
         return this.pathDetails;
+    }
+
+
+    public GHRequest setWeightFactorsGetter(WeightFactorsGetter weightFactorsGetter) {
+        this.weightFactorsGetter = weightFactorsGetter;
+        return this;
+    }
+
+    public WeightFactorsGetter getWeightFactorsGetter() {
+        return weightFactorsGetter;
     }
 
     @Override

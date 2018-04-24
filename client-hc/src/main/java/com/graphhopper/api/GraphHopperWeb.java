@@ -411,10 +411,6 @@ public class GraphHopperWeb implements GraphHopperAPI {
         }
     }
 
-    @Override
-    public GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter) {
-        return route(request);
-    }
     private OkHttpClient getClientForRequest(GHRequest request) {
         OkHttpClient client = this.downloader;
         if (request.getHints().has(TIMEOUT)) {

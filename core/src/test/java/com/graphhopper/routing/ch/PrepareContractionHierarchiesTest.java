@@ -496,13 +496,13 @@ public class PrepareContractionHierarchiesTest {
     public void testCreateAlg() {
         Graph graph = mock(Graph.class);
         AlgorithmOptions algorithmOptions = mock(AlgorithmOptions.class);
-        WeightingsWithFactors weightingsWithFactors = mock(WeightingsWithFactors.class);
+        WeightFactorsGetter weightFactorsGetter = mock(WeightFactorsGetter.class);
         Directory dir = mock(Directory.class);
         CHGraph chGraph = mock(CHGraphImpl.class);
 
         when(algorithmOptions.getAlgorithm()).thenReturn(ASTAR_BI);
         when(algorithmOptions.getHints()).thenReturn(new PMap());
-        when(algorithmOptions.getWeighting()).thenReturn(weightingsWithFactors);
+        when(algorithmOptions.getWeightFactorsGetter()).thenReturn(weightFactorsGetter);
         final PrepareContractionHierarchies prepareContractionHierarchies = new PrepareContractionHierarchies(dir, null, chGraph, mock(WeightingWithPenalties.class), TraversalMode.NODE_BASED);
 
         final RoutingAlgorithm algo = prepareContractionHierarchies.createAlgo(graph, algorithmOptions);

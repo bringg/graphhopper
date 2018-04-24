@@ -367,11 +367,6 @@ public final class GraphHopperGtfs implements GraphHopperAPI {
         return new RequestHandler(request).route();
     }
 
-    @Override
-    public GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter) {
-        return route(request);
-    }
-
     private static PtTravelTimeWeighting createPtTravelTimeWeighting(PtFlagEncoder encoder, boolean arriveBy, double walkSpeedKmH) {
         PtTravelTimeWeighting weighting = new PtTravelTimeWeighting(encoder, walkSpeedKmH);
         if (arriveBy) {

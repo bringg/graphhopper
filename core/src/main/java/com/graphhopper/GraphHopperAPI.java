@@ -42,6 +42,5 @@ public interface GraphHopperAPI {
      * @return the response with the route and possible errors
      */
     GHResponse route(GHRequest request);
-    GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter);
 
 }

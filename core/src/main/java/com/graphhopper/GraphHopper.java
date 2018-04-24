@@ -957,13 +957,8 @@ public class GraphHopper implements GraphHopperAPI {
 
     @Override
     public GHResponse route(GHRequest request) {
-        return route(request, null);
-    }
-
-    @Override
-    public GHResponse route(GHRequest request, WeightFactorsGetter weightFactorsGetter) {
         GHResponse response = new GHResponse();
-        calcPaths(request, response, weightFactorsGetter);
+        calcPaths(request, response);
         return response;
     }
 
@@ -971,10 +966,6 @@ public class GraphHopper implements GraphHopperAPI {
      * This method calculates the alternative path list using the low level Path objects.
      */
     public List<Path> calcPaths(GHRequest request, GHResponse ghRsp) {
-        return calcPaths(request, ghRsp, null);
-    }
-
-    public List<Path> calcPaths(GHRequest request, GHResponse ghRsp, WeightFactorsGetter weightFactorsGetter) {
         if (ghStorage == null || !fullyLoaded)
             throw new IllegalStateException("Do a successful call to load or importOrLoad before routing");
 
@@ -1077,7 +1068,7 @@ public class GraphHopper implements GraphHopperAPI {
 
                 AlgorithmOptions algoOpts = AlgorithmOptions.start().
                         algorithm(algoStr).traversalMode(tMode).weighting(weighting).
-                        weightingsFactorGetter(weightFactorsGetter).
+                        weightingsFactorGetter(request.getWeightFactorsGetter()).
                         maxVisitedNodes(maxVisitedNodesForRequest).
                         hints(hints).
                         build();
