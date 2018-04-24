@@ -24,8 +24,6 @@ import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopperAPI;
 import com.graphhopper.PathWrapper;
-import com.graphhopper.routing.WeightFactorsGetter;
-import com.graphhopper.routing.util.EdgeData;
 import com.graphhopper.util.*;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.exceptions.*;
@@ -33,8 +31,6 @@ import com.graphhopper.util.shapes.GHPoint;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
