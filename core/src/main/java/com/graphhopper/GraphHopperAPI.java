@@ -17,8 +17,6 @@
  */
 package com.graphhopper;
 
-import com.graphhopper.routing.WeightFactorsGetter;
-
 /**
  * Wrapper of the graphhopper online or offline API. Provides read only access.
  * <p>

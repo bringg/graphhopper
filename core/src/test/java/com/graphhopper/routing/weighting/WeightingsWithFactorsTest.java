@@ -36,7 +36,7 @@ public class WeightingsWithFactorsTest {
         when(weighting.calcWeight(edgeIteratorState, true, 1)).thenReturn(weight);
 
         final WeightingsWithFactors weightingsWithFactors = new WeightingsWithFactors(weighting, weightFactorsGetter);
-        assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, false, 1), weight * factor, .001);
+        assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, false, 1), weight / factor, .001);
         assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, true, 1), weight, .001);
     }
 
@@ -63,7 +63,7 @@ public class WeightingsWithFactorsTest {
 
         final WeightingsWithFactors weightingsWithFactors = new WeightingsWithFactors(weighting, weightFactorsGetter);
 
-        assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, true, 1), weight * factor, .001);
+        assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, true, 1), weight / factor, .001);
         assertEquals(weightingsWithFactors.calcWeight(edgeIteratorState, false, 1), weight, .001);
     }
 }

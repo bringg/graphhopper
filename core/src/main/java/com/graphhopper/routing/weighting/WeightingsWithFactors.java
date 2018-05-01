@@ -21,12 +21,12 @@ public class WeightingsWithFactors implements Weighting {
 
     @Override
     public double calcWeight(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return weighting.calcWeight(edgeState, reverse, prevOrNextEdgeId) * weightFactorsGetter.getFactor(edgeState, reverse);
+        return weighting.calcWeight(edgeState, reverse, prevOrNextEdgeId) / weightFactorsGetter.getFactor(edgeState, reverse);
     }
 
     @Override
     public long calcMillis(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) * weightFactorsGetter.getFactor(edgeState, reverse));
+        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) / weightFactorsGetter.getFactor(edgeState, reverse));
     }
 
     @Override
