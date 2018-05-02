@@ -2,7 +2,7 @@
 
 pipeline {
     agent {
-        dockerfile { filename 'Dockerfile.ci' }
+        docker { image 'maven:3.5.3-jdk-10-slim' }
     }
 
     stages {
@@ -12,11 +12,11 @@ pipeline {
             }
             steps {
                 sh 'mvn test'
-                sh 'curl -s https://codecov.io/bash | bash'
             }
             post {
                 always {
                     junit(testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: true)
+                    sh 'curl -s https://codecov.io/bash | bash'
                 }
             }
         }
