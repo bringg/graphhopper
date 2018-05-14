@@ -1,16 +1,16 @@
 package com.graphhopper.routing.weighting;
 
-import com.graphhopper.routing.WeightFactorsGetter;
+import com.graphhopper.routing.WeightFactors;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.util.EdgeIteratorState;
 
 public class WeightingsWithFactors implements Weighting {
     private Weighting weighting;
-    private final WeightFactorsGetter weightFactorsGetter;
+    private final WeightFactors weightFactors;
 
-    public WeightingsWithFactors(Weighting weighting, WeightFactorsGetter weightFactorsGetter) {
-        this.weightFactorsGetter = weightFactorsGetter;
+    public WeightingsWithFactors(Weighting weighting, WeightFactors weightFactors) {
+        this.weightFactors = weightFactors;
         this.weighting = weighting;
     }
 
@@ -21,12 +21,12 @@ public class WeightingsWithFactors implements Weighting {
 
     @Override
     public double calcWeight(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return weighting.calcWeight(edgeState, reverse, prevOrNextEdgeId) / weightFactorsGetter.getFactor(edgeState, reverse);
+        return weighting.calcWeight(edgeState, reverse, prevOrNextEdgeId) / weightFactors.getFactor(edgeState, reverse);
     }
 
     @Override
     public long calcMillis(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) / weightFactorsGetter.getFactor(edgeState, reverse));
+        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) / weightFactors.getFactor(edgeState, reverse));
     }
 
     @Override

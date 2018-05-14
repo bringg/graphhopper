@@ -173,8 +173,8 @@ public class PrepareContractionHierarchies extends AbstractAlgoPreparation imple
         AbstractBidirAlgo algo;
 
         Weighting weighting = prepareWeighting;
-        if (opts.getWeightFactorsGetter() != null)
-            weighting = new WeightingsWithFactors(weighting, opts.getWeightFactorsGetter());
+        if (opts.getWeightFactors() != null)
+            weighting = new WeightingsWithFactors(weighting, opts.getWeightFactors());
 
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
             AStarBidirection tmpAlgo = new AStarBidirectionCH(graph, weighting, traversalMode);

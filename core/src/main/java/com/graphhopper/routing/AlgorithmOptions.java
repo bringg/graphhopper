@@ -38,7 +38,7 @@ public class AlgorithmOptions {
     private final PMap hints = new PMap(5);
     private String algorithm = Parameters.Algorithms.DIJKSTRA_BI;
     private Weighting weighting;
-    private WeightFactorsGetter weightFactorsGetter;
+    private WeightFactors weightFactors;
     private TraversalMode traversalMode = TraversalMode.NODE_BASED;
     private int maxVisitedNodes = Integer.MAX_VALUE;
 
@@ -102,8 +102,8 @@ public class AlgorithmOptions {
         return weighting;
     }
 
-    public WeightFactorsGetter getWeightFactorsGetter() {
-        return weightFactorsGetter;
+    public WeightFactors getWeightFactors() {
+        return weightFactors;
     }
 
     public String getAlgorithm() {
@@ -146,8 +146,8 @@ public class AlgorithmOptions {
             return this;
         }
 
-        public Builder weightingsFactorGetter(WeightFactorsGetter weightFactorsGetter) {
-            this.opts.weightFactorsGetter = weightFactorsGetter;
+        public Builder weightingsFactorGetter(WeightFactors weightFactors) {
+            this.opts.weightFactors = weightFactors;
             return this;
         }
 

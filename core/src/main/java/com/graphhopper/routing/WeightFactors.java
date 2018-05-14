@@ -2,6 +2,6 @@ package com.graphhopper.routing;
 
 import com.graphhopper.util.EdgeIteratorState;
 
-public interface WeightFactorsGetter {
+public interface WeightFactors {
     double getFactor(EdgeIteratorState edgeState, boolean reverse);
 }
