@@ -21,7 +21,7 @@ import com.graphhopper.coll.GHTreeMapComposed;
 import com.graphhopper.routing.*;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.routing.weighting.WeightingsWithFactors;
+import com.graphhopper.routing.weighting.FactoredWeightings;
 import com.graphhopper.storage.*;
 import com.graphhopper.util.*;
 import org.slf4j.Logger;
@@ -174,7 +174,7 @@ public class PrepareContractionHierarchies extends AbstractAlgoPreparation imple
 
         Weighting weighting = prepareWeighting;
         if (opts.getWeightFactors() != null)
-            weighting = new WeightingsWithFactors(weighting, opts.getWeightFactors());
+            weighting = new FactoredWeightings(weighting, opts.getWeightFactors());
 
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
             AStarBidirection tmpAlgo = new AStarBidirectionCH(graph, weighting, traversalMode);

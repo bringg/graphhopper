@@ -27,7 +27,7 @@ import com.graphhopper.routing.util.TraversalMode;
 import com.graphhopper.routing.weighting.FastestWeighting;
 import com.graphhopper.routing.weighting.ShortestWeighting;
 import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.routing.weighting.WeightingsWithFactors;
+import com.graphhopper.routing.weighting.FactoredWeightings;
 import com.graphhopper.storage.*;
 import com.graphhopper.util.*;
 import org.junit.Before;
@@ -506,7 +506,7 @@ public class PrepareContractionHierarchiesTest {
         final PrepareContractionHierarchies prepareContractionHierarchies = new PrepareContractionHierarchies(dir, null, chGraph, mock(WeightingWithPenalties.class), TraversalMode.NODE_BASED);
 
         final RoutingAlgorithm algo = prepareContractionHierarchies.createAlgo(graph, algorithmOptions);
-        assertTrue(((AStarBidirectionCH)algo).getWeighting() instanceof WeightingsWithFactors);
+        assertTrue(((AStarBidirectionCH)algo).getWeighting() instanceof FactoredWeightings);
     }
 
 }

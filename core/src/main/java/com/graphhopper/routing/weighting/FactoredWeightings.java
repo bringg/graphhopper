@@ -5,11 +5,11 @@ import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.util.EdgeIteratorState;
 
-public class WeightingsWithFactors implements Weighting {
+public class FactoredWeightings implements Weighting {
     private Weighting weighting;
     private final WeightFactors weightFactors;
 
-    public WeightingsWithFactors(Weighting weighting, WeightFactors weightFactors) {
+    public FactoredWeightings(Weighting weighting, WeightFactors weightFactors) {
         this.weightFactors = weightFactors;
         this.weighting = weighting;
     }
