@@ -26,7 +26,7 @@ public class FactoredWeightings implements Weighting {
 
     @Override
     public long calcMillis(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        return (long) (weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId) / weightFactors.getFactor(edgeState, reverse));
+        return (long)(Math.ceil(weighting.calcMillis(edgeState, reverse, prevOrNextEdgeId)));
     }
 
     @Override
