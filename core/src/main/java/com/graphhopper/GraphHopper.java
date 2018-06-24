@@ -453,6 +453,7 @@ public class GraphHopper implements GraphHopperAPI {
      * @throws IllegalStateException if graph is not instantiated.
      */
     public GraphHopperStorage getGraphHopperStorage() {
+        logger.info("testing");
         if (ghStorage == null)
             throw new IllegalStateException("GraphHopper storage not initialized");
 
