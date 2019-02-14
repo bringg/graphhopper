@@ -33,7 +33,7 @@ public class SupportTollRoadsFlagEncoderTest {
 
 
         readerWay.setTag("barrier", "toll_booth");
-        assertEquals(supportTollRoadsFlagEncoder.acceptWay(readerWay), 0);
+        assertNotEquals(supportTollRoadsFlagEncoder.acceptWay(readerWay), 0);
         readerWay.removeTag("barrier");
     }
 

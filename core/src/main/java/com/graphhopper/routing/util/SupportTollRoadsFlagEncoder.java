@@ -16,7 +16,7 @@ public class SupportTollRoadsFlagEncoder extends CarFlagEncoder {
 
     @Override
     public long acceptWay(ReaderWay way) {
-        if (way.hasTag("toll", String.valueOf(Boolean.TRUE)) || way.hasTag("toll", "yes") || way.hasTag("barrier", "toll_booth")) {
+        if (way.hasTag("toll", String.valueOf(Boolean.TRUE)) || way.hasTag("toll", "yes")) {
             return 0;
         }
 
