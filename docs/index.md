@@ -11,7 +11,7 @@ See [users of GraphHopper](https://www.graphhopper.com/showcases/) or [Android a
 
 ## Contact
 
-For all questions regarding the GraphHopper routing engine please use [our forum](https://discuss.graphhopper.com). 
+For all questions regarding the GraphHopper routing engine please use [our forum](https://discuss.graphhopper.com).
 For bugs see our contribute section below.
 
 ---
@@ -26,7 +26,7 @@ or the [Android demo](https://github.com/graphhopper/graphhopper/blob/master/REA
 The web module provides a web API for other programming languages as well as starts a simple user interface called GraphHopper Maps
 
  * [Routing API](./web/api-doc.md): Documentation of the Web API to communicate with any GraphHopper server via http.
- * [Deployment Guide](./core/deploy.md): Details about deploying GraphHopper 
+ * [Deployment Guide](./core/deploy.md): Details about deploying GraphHopper
  * There are official API clients in [Java](https://github.com/graphhopper/graphhopper/tree/master/client-hc) and [JavaScript](https://github.com/graphhopper/directions-api-js-client).
 
 #### Configuration
@@ -55,7 +55,7 @@ Various topics are explained in more detail separately:
  * [Simple routing](./core/routing.md): Tutorial how to integrate GraphHopper in your Java application (or pick any JVM language)
  * [Create custom weighting](./core/weighting.md): Documentation about how to create a custom weighting class to influence the track calculation.
  * [Import GTFS](../reader-gtfs): Simple steps to get GTFS import and routing done.
- * [LocationIndex](./core/location-index.md): Documentation about how to get the location index for getting i.e. the nearest edge. 
+ * [LocationIndex](./core/location-index.md): Documentation about how to get the location index for getting i.e. the nearest edge.
  * [Hybrid Mode](./core/landmarks.md): Details about speeding up the route calculation via A* and landmarks.
  * [Speed Mode](./core/ch.md): Details about speeding up the route calculations via [Contraction Hierarchies](http://en.wikipedia.org/wiki/Contraction_hierarchies).
  * [Low level API](./core/low-level-api.md): Instructions how to use GraphHopper as a Java library.
@@ -63,6 +63,7 @@ Various topics are explained in more detail separately:
  * [Spatial Rules](./core/spatial-rules.md): Instruction on how to use and create new SpatialRules. SpatialRules are used to enforce country-specific routing rules.
  * [Turn Restrictions](./core/turn-restrictions.md): Details on how to enable and use turn restrictions.
  * [Isochrone generation in Java](./isochrone/java.md): Instruction on how to create isochrones using the low-level Java API.
+ * [Change Graph](./core/change-graph.md): Details about changing values of the graph without restarting GraphHopper.
  * [Postgis query script](./core/files/postgis)
 
 
@@ -87,5 +88,5 @@ Documentation about how to get an GraphHopper instance running on windows via cy
 
 #### Eclipse
 
-Setup in IntelliJ and NetBeans is just via open project. See [this document](./core/eclipse-setup.md) 
+Setup in IntelliJ and NetBeans is just via open project. See [this document](./core/eclipse-setup.md)
 to set up GraphHopper in Eclipse with maven.
