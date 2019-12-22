@@ -17,15 +17,11 @@
  */
 package com.graphhopper;
 
-import com.graphhopper.routing.WeightFactors;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.util.Helper;
 import com.graphhopper.util.shapes.GHPoint;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * GraphHopper request wrapper to simplify requesting GraphHopper.
@@ -44,7 +40,7 @@ public class GHRequest {
     private String algo = "";
     private boolean possibleToAdd = false;
     private Locale locale = Locale.US;
-    private WeightFactors weightFactors = null;
+    Map<String, Object> hintsObjects = new HashMap<>();
 
     public GHRequest() {
         this(5);
@@ -266,13 +262,12 @@ public class GHRequest {
     }
 
 
-    public GHRequest setWeightFactors(WeightFactors weightFactors) {
-        this.weightFactors = weightFactors;
-        return this;
+    public <T> T getHintsObject(String key, Class<T> type) {
+        return type.cast(hintsObjects.get(key));
     }
 
-    public WeightFactors getWeightFactors() {
-        return weightFactors;
+    public <T> void putHintsObject(String key, T object) {
+        hintsObjects.put(key, object);
     }
 
     @Override
