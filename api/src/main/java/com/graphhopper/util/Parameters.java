@@ -127,6 +127,8 @@ public class Parameters {
          * a rectangle lat1,lon1,lat2,lon2
          */
         public static final String BLOCK_AREA = "block_area";
+
+        public static final String WEIGHT_FACTORS = "weight_factors";
     }
 
     /**
