@@ -55,9 +55,7 @@ public class WeightingWithPenalties extends FastestWeighting {
      */
     @Override
     public double calcWeight(EdgeIteratorState edge, boolean reverse, int prevOrNextEdgeId) {
-        long flags = edge.getFlags();
-
-        double speed = reverse ? super.flagEncoder.getReverseSpeed(flags) : super.flagEncoder.getSpeed(flags);// km/h
+        double speed = reverse ? edge.getReverse(avSpeedEnc) : edge.get(avSpeedEnc);
         if (speed == 0) {
             return Double.POSITIVE_INFINITY;
         }
@@ -65,7 +63,7 @@ public class WeightingWithPenalties extends FastestWeighting {
         double distance = edge.getDistance(); //in meters
         double time = distance / speed * SPEED_CONV; //sec
 
-        boolean unfavoredEdge = edge.getBool(EdgeIteratorState.K_UNFAVORED_EDGE, false);
+        boolean unfavoredEdge = edge.get(EdgeIteratorState.UNFAVORED_EDGE);
         if (unfavoredEdge) {
             time += headingPenalty;
         }
@@ -75,14 +73,8 @@ public class WeightingWithPenalties extends FastestWeighting {
 
     @Override
     public long calcMillis(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
-        long time = 0;
-        boolean unfavoredEdge = edgeState.getBool(EdgeIteratorState.K_UNFAVORED_EDGE, false);
-        if (unfavoredEdge) {
-            time += headingPenaltySec * 1000;
-        }
-
         final double penalty = updateVisitedEdgesAndGetPenalty(edgeState, reverse, prevOrNextEdgeId) * 1000;
-        return (long) (time + penalty + super.calcMillis(edgeState, reverse, prevOrNextEdgeId));
+        return (long) (penalty + super.calcMillis(edgeState, reverse, prevOrNextEdgeId));
     }
 
     @Override

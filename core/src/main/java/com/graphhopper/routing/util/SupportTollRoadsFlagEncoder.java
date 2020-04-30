@@ -15,12 +15,12 @@ public class SupportTollRoadsFlagEncoder extends CarFlagEncoder {
     }
 
     @Override
-    public long acceptWay(ReaderWay way) {
+    public EncodingManager.Access getAccess(ReaderWay way) {
         if (way.hasTag("toll", String.valueOf(Boolean.TRUE)) || way.hasTag("toll", "yes") || way.hasTag("barrier", "toll_booth")) {
-            return 0;
+            return EncodingManager.Access.CAN_SKIP;
         }
 
-        return super.acceptWay(way);
+        return super.getAccess(way);
     }
 
     @Override

@@ -57,4 +57,8 @@ public class AStarBidirectionCH extends AStarBidirection {
     public String toString() {
         return getName() + "|" + weighting;
     }
+
+    public final Weighting getWeighting() {
+        return weighting;
+    }
 }

@@ -17,6 +17,8 @@
  */
 package com.graphhopper;
 
+import com.graphhopper.Penalties.Penalty;
+import com.graphhopper.Penalties.TurnPenalty;
 import com.graphhopper.json.geo.JsonFeature;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.dem.*;
@@ -912,6 +914,10 @@ public class GraphHopper implements GraphHopperAPI {
 
         } else if ("short_fastest".equalsIgnoreCase(weightingStr)) {
             weighting = new ShortFastestWeighting(encoder, hintsMap);
+        } else if ("weighting_with_penalties".equalsIgnoreCase(weightingStr)) {
+            Collection<Penalty> penalties = new ArrayList<>();
+            penalties.add(new TurnPenalty(hintsMap));
+            weighting = new WeightingWithPenalties(encoder, hintsMap, penalties);
         }
 
         if (weighting == null)
@@ -1059,6 +1065,7 @@ public class GraphHopper implements GraphHopperAPI {
 
                 AlgorithmOptions algoOpts = AlgorithmOptions.start().
                         algorithm(algoStr).traversalMode(tMode).weighting(weighting).
+                        weightingsFactorGetter(request.getHintsObject(Routing.WEIGHT_FACTORS, WeightFactors.class)).
                         maxVisitedNodes(maxVisitedNodesForRequest).
                         hints(hints).
                         build();

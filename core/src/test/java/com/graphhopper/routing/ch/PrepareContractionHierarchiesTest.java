@@ -19,8 +19,11 @@ package com.graphhopper.routing.ch;
 
 import com.carrotsearch.hppc.IntArrayList;
 import com.carrotsearch.hppc.IntIndexedContainer;
+import com.graphhopper.WeightingWithPenalties;
 import com.graphhopper.routing.*;
+import com.graphhopper.routing.profiles.EncodedValue;
 import com.graphhopper.routing.util.*;
+import com.graphhopper.routing.weighting.FactoredWeightings;
 import com.graphhopper.routing.weighting.FastestWeighting;
 import com.graphhopper.routing.weighting.ShortestWeighting;
 import com.graphhopper.routing.weighting.Weighting;
@@ -33,8 +36,11 @@ import org.junit.Test;
 import java.util.*;
 
 import static com.graphhopper.util.GHUtility.updateDistancesFor;
+import static com.graphhopper.util.Parameters.Algorithms.ASTAR_BI;
 import static com.graphhopper.util.Parameters.Algorithms.DIJKSTRA_BI;
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Peter Karich
@@ -729,4 +735,30 @@ public class PrepareContractionHierarchiesTest {
         return new PrepareContractionHierarchies(lg);
     }
 
+    @Test
+    public void testCreateAlg() {
+        final EncodingManager em = EncodingManager.create(Arrays.asList(new CarFlagEncoder(new PMap("speed_two_directions=true")),
+                new BikeFlagEncoder(), new FootFlagEncoder()), 8);
+        Graph graph = mock(Graph.class);
+        AlgorithmOptions algorithmOptions = mock(AlgorithmOptions.class);
+        WeightFactors weightFactors = mock(WeightFactors.class);
+        Weighting weighting = mock(Weighting.class);
+        CHGraph chGraph = mock(CHGraphImpl.class);
+        final CHProfile chProfile = mock(CHProfile.class);
+        final CarFlagEncoder carFlagEncoder = new CarFlagEncoder();
+        carFlagEncoder.setEncodedValueLookup(em);
+        carFlagEncoder.createEncodedValues(new ArrayList<EncodedValue>(), "car", 0);
+
+        when(chGraph.getCHProfile()).thenReturn(chProfile);
+        when(chProfile.getTraversalMode()).thenReturn(TraversalMode.NODE_BASED);
+        when(chProfile.getWeighting()).thenReturn(weighting);
+        when(weighting.getFlagEncoder()).thenReturn(carFlagEncoder);
+        when(algorithmOptions.getAlgorithm()).thenReturn(ASTAR_BI);
+        when(algorithmOptions.getHints()).thenReturn(new PMap());
+        when(algorithmOptions.getWeightFactors()).thenReturn(weightFactors);
+        final PrepareContractionHierarchies prepareContractionHierarchies = new PrepareContractionHierarchies(chGraph);
+
+        final RoutingAlgorithm algo = prepareContractionHierarchies.createAlgo(graph, algorithmOptions);
+        assertTrue(((AStarBidirectionCH)algo).getWeighting() instanceof FactoredWeightings);
+    }
 }
