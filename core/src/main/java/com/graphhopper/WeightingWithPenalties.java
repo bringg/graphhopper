@@ -5,6 +5,7 @@ import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.routing.weighting.AbstractWeighting;
 import com.graphhopper.routing.weighting.FastestWeighting;
+import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
@@ -15,7 +16,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-public class WeightingWithPenalties extends FastestWeighting {
+public class WeightingWithPenalties extends AbstractWeighting {
     /**
      * Converting to seconds is not necessary but makes adding other penalties easier (e.g. turn
      * costs or traffic light costs etc)
@@ -25,18 +26,22 @@ public class WeightingWithPenalties extends FastestWeighting {
      */
     private final static double SPEED_CONV = 3.6;
     private static final int MIN_TO_SEC = 60;
-    private final double headingPenalty;
-    private final long headingPenaltySec;
-    private final Map<Integer, WayData> visitedEdgesCoordinates = new HashMap<>();
-    private final Collection<Penalty> penalties;
     private static final Logger logger = LoggerFactory.getLogger(WeightingWithPenalties.class);
 
+    private final Map<Integer, WayData> visitedEdgesCoordinates = new HashMap<>();
+    private final Collection<Penalty> penalties;
+    private final Weighting weightings;
 
-    public WeightingWithPenalties(FlagEncoder encoder, HintsMap hintsMap, Collection<Penalty> penalties) {
+
+    public WeightingWithPenalties(Weighting weightings, FlagEncoder encoder, HintsMap hintsMap, Collection<Penalty> penalties) {
         super(encoder);
-        this.headingPenalty = hintsMap.getDouble(Parameters.Routing.HEADING_PENALTY, Parameters.Routing.DEFAULT_HEADING_PENALTY);
         this.penalties = penalties;
-        headingPenaltySec = Math.round(headingPenalty);
+        this.weightings = weightings;
+    }
+
+    @Override
+    public double getMinWeight(double distance) {
+        return weightings.getMinWeight(distance);
     }
 
     /**
@@ -55,26 +60,13 @@ public class WeightingWithPenalties extends FastestWeighting {
      */
     @Override
     public double calcWeight(EdgeIteratorState edge, boolean reverse, int prevOrNextEdgeId) {
-        double speed = reverse ? edge.getReverse(avSpeedEnc) : edge.get(avSpeedEnc);
-        if (speed == 0) {
-            return Double.POSITIVE_INFINITY;
-        }
-
-        double distance = edge.getDistance(); //in meters
-        double time = distance / speed * SPEED_CONV; //sec
-
-        boolean unfavoredEdge = edge.get(EdgeIteratorState.UNFAVORED_EDGE);
-        if (unfavoredEdge) {
-            time += headingPenalty;
-        }
-
-        return time + updateVisitedEdgesAndGetPenalty(edge, reverse, prevOrNextEdgeId);
+        return weightings.calcWeight(edge, reverse, prevOrNextEdgeId) + updateVisitedEdgesAndGetPenalty(edge, reverse, prevOrNextEdgeId);
     }
 
     @Override
     public long calcMillis(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
         final double penalty = updateVisitedEdgesAndGetPenalty(edgeState, reverse, prevOrNextEdgeId) * 1000;
-        return (long) (penalty + super.calcMillis(edgeState, reverse, prevOrNextEdgeId));
+        return (long) (penalty + weightings.calcMillis(edgeState, reverse, prevOrNextEdgeId));
     }
 
     @Override

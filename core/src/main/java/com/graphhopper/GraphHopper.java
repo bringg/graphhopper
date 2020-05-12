@@ -109,6 +109,8 @@ public class GraphHopper implements GraphHopperAPI {
     // for prepare
     private int minNetworkSize = 200;
     private int minOneWayNetworkSize = 0;
+    private int tollRoadPenalty = 0;
+    private boolean addTurnAdditionalWeight = false;
 
     // for LM prepare
     private final LMAlgoFactoryDecorator lmFactoryDecorator = new LMAlgoFactoryDecorator();
@@ -582,6 +584,8 @@ public class GraphHopper implements GraphHopperAPI {
         // prepare CH, LM, ...
         for (RoutingAlgorithmFactoryDecorator decorator : algoDecorators) {
             decorator.init(args);
+            tollRoadPenalty = args.getInt("weightings.toll_road_penalty", 0);
+            addTurnAdditionalWeight = args.getBool("weightings.add_turn_penalties", Boolean.FALSE);
         }
 
         // osm import
@@ -914,10 +918,8 @@ public class GraphHopper implements GraphHopperAPI {
 
         } else if ("short_fastest".equalsIgnoreCase(weightingStr)) {
             weighting = new ShortFastestWeighting(encoder, hintsMap);
-        } else if ("weighting_with_penalties".equalsIgnoreCase(weightingStr)) {
-            Collection<Penalty> penalties = new ArrayList<>();
-            penalties.add(new TurnPenalty(hintsMap));
-            weighting = new WeightingWithPenalties(encoder, hintsMap, penalties);
+        } else if ("fastest_with_toll_road_weights".equalsIgnoreCase(weightingStr)) {
+            weighting = new FastestWeightingWithTollRoadsPenalties(encoder, hintsMap, tollRoadPenalty);
         }
 
         if (weighting == null)
@@ -929,6 +931,12 @@ public class GraphHopper implements GraphHopperAPI {
                     parseBlockArea(blockAreaStr, DefaultEdgeFilter.allEdges(encoder), hintsMap.getDouble("block_area.edge_id_max_area", 1000 * 1000));
             return new BlockAreaWeighting(weighting, blockArea);
         }
+        if (addTurnAdditionalWeight) {
+            Collection<Penalty> penalties = new ArrayList<>();
+            penalties.add(new TurnPenalty(hintsMap));
+            weighting = new WeightingWithPenalties(weighting, encoder, hintsMap, penalties);
+        }
+
 
         return weighting;
     }
