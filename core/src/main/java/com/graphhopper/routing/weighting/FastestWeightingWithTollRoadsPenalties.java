@@ -26,7 +26,7 @@ public class FastestWeightingWithTollRoadsPenalties extends FastestWeighting {
         return "fastest_with_toll_road_weights";
     }
 
-    private int getFactor(EdgeIteratorState edge, boolean reverse) {
+    int getFactor(EdgeIteratorState edge, boolean reverse) {
         return tollEnc.getEnum(reverse, edge.getFlags()) != Toll.NO ?
              tollRoadPenalty : 1;
     }
