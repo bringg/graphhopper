@@ -683,6 +683,7 @@ public class GraphHopperOSMTest {
         assertEquals(Toll.NO.toString(), pathDetails.get(0).getValue());
         assertEquals(Toll.ALL.toString(), pathDetails.get(1).getValue());
         assertEquals(Toll.NO.toString(), pathDetails.get(2).getValue());
+        graphHopper.close();
     }
 
     @Test
