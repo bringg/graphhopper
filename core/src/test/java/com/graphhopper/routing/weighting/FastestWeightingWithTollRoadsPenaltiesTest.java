@@ -26,7 +26,7 @@ public class FastestWeightingWithTollRoadsPenaltiesTest {
 
 
     @Test
-    public void testWeightWrongHeading() {
+    public void testWeight() {
         final int headingPenalty = 100 + random.nextInt(200);
         final int tollFactor = 100 + random.nextInt(200);
         final EnumEncodedValue tollEncoder = new EnumEncodedValue("toll", Toll.class);
