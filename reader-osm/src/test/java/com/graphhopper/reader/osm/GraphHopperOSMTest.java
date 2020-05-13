@@ -42,6 +42,7 @@ import com.graphhopper.util.Parameters.Routing;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.shapes.BBox;
 import com.graphhopper.util.shapes.GHPoint;
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -662,6 +663,9 @@ public class GraphHopperOSMTest {
 
     @Test
     public void testFastestWeightingWithTollRoads() {
+        try{
+            FileUtils.deleteDirectory(new File("./src/test/resources/com/graphhopper/reader/osm/us-ny-test.osm-gh"));
+        } catch (IOException e) {}
         CmdArgs cmdArgs = new CmdArgs();
         final GraphHopper graphHopper = new GraphHopperOSM();
         cmdArgs.put("datareader.file", "./src/test/resources/com/graphhopper/reader/osm/us-ny-test.osm.pbf");
