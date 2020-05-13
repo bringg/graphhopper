@@ -667,22 +667,32 @@ public class GraphHopperOSMTest {
         cmdArgs.put("datareader.file", "./src/test/resources/com/graphhopper/reader/osm/us-ny-test.osm.pbf");
         cmdArgs.put("graph.flag_encoders", "car|turn_costs=true");
         cmdArgs.put("graph.encoded_values", "toll");
-        cmdArgs.put("prepare.ch.weightings", "fastest_with_toll_road_weights");
+        cmdArgs.put("prepare.ch.weightings", "fastest,fastest_with_toll_road_weights");
         cmdArgs.put("prepare.ch.weighting_with_penalties", "true");
         cmdArgs.put("weightings.toll_road_penalty", "100");
         cmdArgs.put("weightings.add_turn_penalties", Boolean.FALSE.toString());
         cmdArgs.put("prepare.ch.edge_based", "edge_or_node");
         graphHopper.init(cmdArgs);
         graphHopper.importOrLoad();
-        final GHRequest ghRequest = new GHRequest(40.606644, -74.032143, 40.598876, -74.063713);
+        GHRequest ghRequest = new GHRequest(40.606644, -74.032143, 40.598876, -74.063713);
         ghRequest.setPathDetails(ImmutableList.of(Toll.KEY));
-        final GHResponse route = graphHopper.route(ghRequest);
-        assertFalse(route.hasErrors());
-        final List<PathDetail> pathDetails = route.getBest().getPathDetails().get(Toll.KEY);
+        ghRequest.setWeighting("fastest");
+        final GHResponse routeWithoutToll = graphHopper.route(ghRequest);
+        assertFalse(routeWithoutToll.hasErrors());
+        final List<PathDetail> pathDetails = routeWithoutToll.getBest().getPathDetails().get(Toll.KEY);
         assertEquals(3, pathDetails.size());
         assertEquals(Toll.NO.toString(), pathDetails.get(0).getValue());
         assertEquals(Toll.ALL.toString(), pathDetails.get(1).getValue());
         assertEquals(Toll.NO.toString(), pathDetails.get(2).getValue());
+        ghRequest.setWeighting("fastest_with_toll_road_weights");
+        final GHResponse routeWithToll = graphHopper.route(ghRequest);
+        assertFalse(routeWithToll.hasErrors());
+        final List<PathDetail> pathDetailsWithToll = routeWithToll.getBest().getPathDetails().get(Toll.KEY);
+        assertEquals(3, pathDetailsWithToll.size());
+        assertEquals(Toll.NO.toString(), pathDetailsWithToll.get(0).getValue());
+        assertEquals(Toll.ALL.toString(), pathDetailsWithToll.get(1).getValue());
+        assertEquals(Toll.NO.toString(), pathDetailsWithToll.get(2).getValue());
+        assertTrue(routeWithoutToll.getBest().getRouteWeight() < routeWithToll.getBest().getRouteWeight());
         graphHopper.close();
     }
 
