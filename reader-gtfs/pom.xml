@@ -67,7 +67,7 @@
             <artifactId>gtfs-realtime-bindings</artifactId>
             <version>0.0.4</version>
         </dependency>
-
+        
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-core</artifactId>
@@ -130,4 +130,12 @@
             </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>Geomajas</id>
+            <name>Geomajas repository</name>
+            <url>http://repo.geomajas.org/nexus/content/groups/public</url>
+        </repository>
+    </repositories>
 </project>
