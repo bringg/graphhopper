@@ -62,7 +62,7 @@ public class WeightingWithPenalties extends AbstractWeighting {
 
     @Override
     public String getName() {
-        return "weighting_with_penalties_" + (weightings == null ? "" : weightings.getName());
+        return weightings == null ? "weighting_with_penalties" : weightings.getName();
     }
 
 
