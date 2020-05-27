@@ -17,15 +17,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class WeightingWithPenalties extends AbstractWeighting {
-    /**
-     * Converting to seconds is not necessary but makes adding other penalties easier (e.g. turn
-     * costs or traffic light costs etc)
-     * speed is in km / hr
-     * distance is in meters convert it to km    ->   / 1000
-     * so time is in hours -> convert it to sec  ->   * 60 * 60
-     */
-    private final static double SPEED_CONV = 3.6;
-    private static final int MIN_TO_SEC = 60;
     private static final Logger logger = LoggerFactory.getLogger(WeightingWithPenalties.class);
 
     private final Map<Integer, WayData> visitedEdgesCoordinates = new HashMap<>();
@@ -71,7 +62,7 @@ public class WeightingWithPenalties extends AbstractWeighting {
 
     @Override
     public String getName() {
-        return "weighting_with_penalties_" + weightings.getName();
+        return "weighting_with_penalties_" + (weightings == null ? "" : weightings.getName());
     }
 
 
