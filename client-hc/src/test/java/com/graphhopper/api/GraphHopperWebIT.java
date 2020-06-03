@@ -153,11 +153,11 @@ public class GraphHopperWebIT {
                 addPoint(new GHPoint(52.399067, 13.469238));
 
         GHResponse res = gh.route(req);
-        assertEquals("Continue onto B 96", res.getBest().getInstructions().get(4).getName());
+        assertEquals("Continue onto B 96", res.getBest().getInstructions().get(6).getName());
 
         req.getHints().put("turn_description", false);
         res = gh.route(req);
-        assertEquals("B 96", res.getBest().getInstructions().get(4).getName());
+        assertEquals("B 96", res.getBest().getInstructions().get(6).getName());
     }
 
     @Test
@@ -272,7 +272,8 @@ public class GraphHopperWebIT {
         }
 
         // ... only weight:
-        assertEquals(1840, res.getWeight(1, 2), 5);
+
+        assertEquals(1930, res.getWeight(1, 2), 5);
 
         req = AbstractGHMatrixWebTester.createRequest();
         req.addOutArray("weights");
@@ -280,7 +281,7 @@ public class GraphHopperWebIT {
         res = ghMatrix.route(req);
 
         assertEquals(9834, res.getDistance(1, 2), 20);
-        assertEquals(1840, res.getWeight(1, 2), 10);
+        assertEquals(1930, res.getWeight(1, 2), 10);
     }
 
     @Test
