@@ -92,6 +92,8 @@ public class Parameters {
      */
     public static final class Routing {
         public static final String EDGE_BASED = "edge_based";
+        public static final String TURN_COSTS = "turn_costs";
+        public static final String U_TURN_COSTS = "u_turn_costs";
         public static final String MAX_VISITED_NODES = "max_visited_nodes";
         public static final String INIT_MAX_VISITED_NODES = ROUTING_INIT_PREFIX + "max_visited_nodes";
         /**
@@ -114,6 +116,7 @@ public class Parameters {
          */
         public static final String PASS_THROUGH = "pass_through";
         public static final String POINT_HINT = "point_hint";
+        public static final String SNAP_PREVENTION = "snap_prevention";
         /**
          * default heading penalty in seconds
          */
@@ -191,7 +194,7 @@ public class Parameters {
     /**
      * Properties for the details response
      */
-    public static final class DETAILS {
+    public static final class Details {
 
         public static final String PATH_DETAILS = "details";
 

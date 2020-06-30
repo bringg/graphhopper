@@ -119,7 +119,7 @@ public class TurnCostExtension implements GraphExtension {
     }
 
     /**
-     * Add a new turn cost entry or clear an existing. See TurnFlagsReadWriteTest for usage examples.
+     * Add a new turn cost entry or clear an existing. See tests for usage examples.
      *
      * @param fromEdge  edge ID
      * @param viaNode   node ID
@@ -135,7 +135,7 @@ public class TurnCostExtension implements GraphExtension {
         long newFlags = turnFlags;
         int next = NO_TURN_ENTRY;
 
-        // determine if we already have an cost entry for this node
+        // determine if we already have a cost entry for this node
         int previousEntryIndex = nodeAccess.getAdditionalNodeField(viaNode);
         if (previousEntryIndex == NO_TURN_ENTRY) {
             // set cost-pointer to this new cost entry
@@ -189,12 +189,20 @@ public class TurnCostExtension implements GraphExtension {
      * @return turn flags of the specified node and edge properties.
      */
     public long getTurnCostFlags(int edgeFrom, int nodeVia, int edgeTo) {
-        if (edgeFrom == EdgeIterator.NO_EDGE || edgeTo == EdgeIterator.NO_EDGE)
+        if (!EdgeIterator.Edge.isValid(edgeFrom) || !EdgeIterator.Edge.isValid(edgeTo))
             throw new IllegalArgumentException("from and to edge cannot be NO_EDGE");
         if (nodeVia < 0)
             throw new IllegalArgumentException("via node cannot be negative");
 
         return nextCostFlags(edgeFrom, nodeVia, edgeTo);
+    }
+
+    public boolean isUTurn(int edgeFrom, int edgeTo) {
+        return edgeFrom == edgeTo;
+    }
+
+    public boolean isUTurnAllowed(int node) {
+        return true;
     }
 
     private long nextCostFlags(int edgeFrom, int nodeVia, int edgeTo) {

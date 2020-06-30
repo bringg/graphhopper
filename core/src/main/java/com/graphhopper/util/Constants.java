@@ -34,7 +34,6 @@ public class Constants {
      */
     public static final String JAVA_VERSION = System.getProperty("java.version");
 
-
     /**
      * The value of <tt>System.getProperty("os.name")</tt>. *
      */
@@ -68,8 +67,8 @@ public class Constants {
     private static final int JVM_MINOR_VERSION;
 
     public static final int VERSION_NODE = 5;
-    public static final int VERSION_EDGE = 14;
-    public static final int VERSION_SHORTCUT = 2;
+    public static final int VERSION_EDGE = 15;
+    public static final int VERSION_SHORTCUT = 5;
     public static final int VERSION_GEOMETRY = 4;
     public static final int VERSION_LOCATION_IDX = 3;
     public static final int VERSION_NAME_IDX = 3;
@@ -78,6 +77,7 @@ public class Constants {
      */
     public static final String VERSION;
     public static final String BUILD_DATE;
+    public static final String GIT_INFO;
     public static final boolean SNAPSHOT;
 
     static {
@@ -124,6 +124,18 @@ public class Constants {
         } catch (Exception ex) {
         }
         BUILD_DATE = buildDate;
+
+        String gitInfo = "";
+        try {
+            List<String> gitInfos = readFile(new InputStreamReader(GraphHopper.class.getResourceAsStream("gitinfo"), UTF_CS));
+            if (gitInfos.size() == 5) {
+                gitInfo = gitInfos.get(1) + "|" + gitInfos.get(2) + "|dirty=" + gitInfos.get(3) + "|" + gitInfos.get(4);
+            } else {
+                System.err.println("GraphHopper Initialization WARNING: unexpected git info: " + gitInfos.toString());
+            }
+        } catch (Exception ex) {
+        }
+        GIT_INFO = gitInfo;
     }
 
     public static String getVersions() {

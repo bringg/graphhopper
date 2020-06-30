@@ -3,8 +3,10 @@ package com.graphhopper.resources;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.graphhopper.GraphHopper;
+import com.graphhopper.http.WebHelper;
+import com.graphhopper.isochrone.algorithm.DelaunayTriangulationIsolineBuilder;
 import com.graphhopper.isochrone.algorithm.Isochrone;
-import com.graphhopper.isochrone.algorithm.RasterHullBuilder;
+import com.graphhopper.json.geo.JsonFeature;
 import com.graphhopper.routing.QueryGraph;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.routing.weighting.Weighting;
@@ -13,6 +15,8 @@ import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.util.StopWatch;
 import com.graphhopper.util.shapes.GHPoint;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,17 +35,18 @@ import java.util.List;
 @Path("isochrone")
 public class IsochroneResource {
 
-    private static final Logger logger = LoggerFactory.getLogger(RouteResource.class);
+    private static final Logger logger = LoggerFactory.getLogger(IsochroneResource.class);
 
     private final GraphHopper graphHopper;
     private final EncodingManager encodingManager;
-    private final RasterHullBuilder rasterHullBuilder;
+    private final DelaunayTriangulationIsolineBuilder delaunayTriangulationIsolineBuilder;
+    private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Inject
-    public IsochroneResource(GraphHopper graphHopper, EncodingManager encodingManager, RasterHullBuilder rasterHullBuilder) {
+    public IsochroneResource(GraphHopper graphHopper, EncodingManager encodingManager, DelaunayTriangulationIsolineBuilder delaunayTriangulationIsolineBuilder) {
         this.graphHopper = graphHopper;
         this.encodingManager = encodingManager;
-        this.rasterHullBuilder = rasterHullBuilder;
+        this.delaunayTriangulationIsolineBuilder = delaunayTriangulationIsolineBuilder;
     }
 
     @GET
@@ -50,14 +55,15 @@ public class IsochroneResource {
             @Context HttpServletRequest httpReq,
             @Context UriInfo uriInfo,
             @QueryParam("vehicle") @DefaultValue("car") String vehicle,
-            @QueryParam("buckets") @DefaultValue("1") int buckets,
+            @QueryParam("buckets") @DefaultValue("1") int nBuckets,
             @QueryParam("reverse_flow") @DefaultValue("false") boolean reverseFlow,
             @QueryParam("point") GHPoint point,
             @QueryParam("result") @DefaultValue("polygon") String resultStr,
             @QueryParam("time_limit") @DefaultValue("600") long timeLimitInSeconds,
-            @QueryParam("distance_limit") @DefaultValue("-1") double distanceInMeter) {
+            @QueryParam("distance_limit") @DefaultValue("-1") double distanceInMeter,
+            @QueryParam("type") @DefaultValue("json") String respType) {
 
-        if (buckets > 20 || buckets < 1)
+        if (nBuckets > 20 || nBuckets < 1)
             throw new IllegalArgumentException("Number of buckets has to be in the range [1, 20]");
 
         if (point == null)
@@ -65,8 +71,12 @@ public class IsochroneResource {
 
         StopWatch sw = new StopWatch().start();
 
-        if (!encodingManager.supports(vehicle))
+        if (!encodingManager.hasEncoder(vehicle))
             throw new IllegalArgumentException("vehicle not supported:" + vehicle);
+        
+        if (respType != null && !respType.equalsIgnoreCase("json") && !respType.equalsIgnoreCase("geojson")) {
+            throw new IllegalArgumentException("Format not supported:" + respType);
+        }
 
         FlagEncoder encoder = encodingManager.getEncoder(vehicle);
         EdgeFilter edgeFilter = DefaultEdgeFilter.allEdges(encoder);
@@ -86,85 +96,58 @@ public class IsochroneResource {
         Isochrone isochrone = new Isochrone(queryGraph, weighting, reverseFlow);
 
         if (distanceInMeter > 0) {
-            double maxMeter = 50 * 1000;
-            if (distanceInMeter > maxMeter)
-                throw new IllegalArgumentException("Specify a limit of less than " + maxMeter / 1000f + "km");
-            if (buckets > (distanceInMeter / 500))
-                throw new IllegalArgumentException("Specify buckets less than the number of explored kilometers");
-
             isochrone.setDistanceLimit(distanceInMeter);
         } else {
-
-            long maxSeconds = 80 * 60;
-            if (timeLimitInSeconds > maxSeconds)
-                throw new IllegalArgumentException("Specify a limit of less than " + maxSeconds + " seconds");
-            if (buckets > (timeLimitInSeconds / 60))
-                throw new IllegalArgumentException("Specify buckets less than the number of explored minutes");
-
             isochrone.setTimeLimit(timeLimitInSeconds);
         }
 
-        List<List<Double[]>> list = isochrone.searchGPS(qr.getClosestNode(), buckets);
-        if (isochrone.getVisitedNodes() > graphHopper.getMaxVisitedNodes() / 5) {
-            throw new IllegalArgumentException("Server side reset: too many junction nodes would have to explored (" + isochrone.getVisitedNodes() + "). Let us know if you need this increased.");
-        }
-
-        int counter = 0;
-        for (List<Double[]> tmp : list) {
-            if (tmp.size() < 2) {
-                throw new IllegalArgumentException("Too few points found for bucket " + counter + ". "
-                        + "Please try a different 'point', a smaller 'buckets' count or a larger 'time_limit'. "
-                        + "And let us know if you think this is a bug!");
+        if ("polygon".equalsIgnoreCase(resultStr)) {
+            List<List<Coordinate>> buckets = isochrone.searchGPS(qr.getClosestNode(), nBuckets);
+            if (isochrone.getVisitedNodes() > graphHopper.getMaxVisitedNodes() / 5) {
+                throw new IllegalArgumentException("Server side reset: too many junction nodes would have to explored (" + isochrone.getVisitedNodes() + "). Let us know if you need this increased.");
             }
-            counter++;
-        }
 
-        Object calcRes;
-        if ("pointlist".equalsIgnoreCase(resultStr)) {
-            calcRes = list;
-
-        } else if ("polygon".equalsIgnoreCase(resultStr)) {
-            list = rasterHullBuilder.calcList(list, list.size() - 1);
-
-            ArrayList polyList = new ArrayList();
-            int index = 0;
-            for (List<Double[]> polygon : list) {
-                HashMap<String, Object> geoJsonMap = new HashMap<>();
-                HashMap<String, Object> propMap = new HashMap<>();
-                HashMap<String, Object> geometryMap = new HashMap<>();
-                polyList.add(geoJsonMap);
-                geoJsonMap.put("type", "Feature");
-                geoJsonMap.put("properties", propMap);
-                geoJsonMap.put("geometry", geometryMap);
-
-                propMap.put("bucket", index);
-                geometryMap.put("type", "Polygon");
-                // we have no holes => embed in yet another list
-                geometryMap.put("coordinates", Collections.singletonList(polygon));
-                index++;
+            int counter = 0;
+            for (List<Coordinate> bucket : buckets) {
+                if (bucket.size() < 2) {
+                    throw new IllegalArgumentException("Too few points found for bucket " + counter + ". "
+                            + "Please try a different 'point', a smaller 'buckets' count or a larger 'time_limit'. "
+                            + "And let us know if you think this is a bug!");
+                }
+                counter++;
             }
-            calcRes = polyList;
+            ArrayList<JsonFeature> features = new ArrayList<>();
+            List<Coordinate[]> polygonShells = delaunayTriangulationIsolineBuilder.calcList(buckets, buckets.size() - 1);
+            for (Coordinate[] polygonShell : polygonShells) {
+                JsonFeature feature = new JsonFeature();
+                HashMap<String, Object> properties = new HashMap<>();
+                properties.put("bucket", features.size());
+                if (respType.equalsIgnoreCase("geojson")) {
+                    properties.put("copyrights", WebHelper.COPYRIGHTS);
+                }
+                feature.setProperties(properties);
+                feature.setGeometry(geometryFactory.createPolygon(polygonShell));
+                features.add(feature);
+            }
+            ObjectNode json = JsonNodeFactory.instance.objectNode();
+            
+            ObjectNode finalJson = null;
+            if (respType.equalsIgnoreCase("geojson")) {
+            	json.put("type", "FeatureCollection");
+                json.putPOJO("features", features);
+                finalJson = json;
+            } else {
+            	json.putPOJO("polygons", features);
+            	finalJson = WebHelper.jsonResponsePutInfo(json, sw.getSeconds());
+            }
+            
+            sw.stop();
+            logger.info("took: " + sw.getSeconds() + ", visited nodes:" + isochrone.getVisitedNodes() + ", " + uriInfo.getQueryParameters());
+            return Response.ok(finalJson).header("X-GH-Took", "" + sw.getSeconds() * 1000).
+                    build();
+
         } else {
             throw new IllegalArgumentException("type not supported:" + resultStr);
         }
-
-        logger.info("took: " + sw.getSeconds() + ", visited nodes:" + isochrone.getVisitedNodes() + ", " + uriInfo.getQueryParameters());
-        return Response.fromResponse(jsonSuccessResponse(calcRes, sw.stop().getSeconds()))
-                .header("X-GH-Took", "" + sw.stop().getSeconds() * 1000)
-                .build();
-    }
-
-    private Response jsonSuccessResponse(Object result, float took) {
-        ObjectNode json = JsonNodeFactory.instance.objectNode();
-        json.putPOJO("polygons", result);
-        // If you replace GraphHopper with your own brand name, this is fine.
-        // Still it would be highly appreciated if you mention us in your about page!
-        final ObjectNode info = json.putObject("info");
-        info.putArray("copyrights")
-                .add("GraphHopper")
-                .add("OpenStreetMap contributors");
-        info.put("took", Math.round(took * 1000));
-
-        return Response.ok(json).build();
     }
 }

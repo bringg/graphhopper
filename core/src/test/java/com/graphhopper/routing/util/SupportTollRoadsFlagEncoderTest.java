@@ -15,7 +15,6 @@ public class SupportTollRoadsFlagEncoderTest {
 
     @Before
     public void defineWayBits() {
-        supportTollRoadsFlagEncoder.defineWayBits(0, 0);
         readerWay.setTag("toll", String.valueOf(Boolean.TRUE));
         readerWay.setTag("highway", "motorroad");
         readerWayWithoutTollBit.setTag("toll", String.valueOf(Boolean.FALSE));
@@ -25,21 +24,21 @@ public class SupportTollRoadsFlagEncoderTest {
     @Test
     public void notAccept() {
         readerWay.setTag("toll", String.valueOf(Boolean.TRUE));
-        assertEquals(supportTollRoadsFlagEncoder.acceptWay(readerWay), 0);
+        assertEquals(supportTollRoadsFlagEncoder.getAccess(readerWay), EncodingManager.Access.CAN_SKIP);
 
         readerWay.setTag("toll", "yes");
-        assertEquals(supportTollRoadsFlagEncoder.acceptWay(readerWay), 0);
+        assertEquals(supportTollRoadsFlagEncoder.getAccess(readerWay), EncodingManager.Access.CAN_SKIP);
         readerWay.removeTag("toll");
 
 
         readerWay.setTag("barrier", "toll_booth");
-        assertEquals(supportTollRoadsFlagEncoder.acceptWay(readerWay), 0);
+        assertEquals(supportTollRoadsFlagEncoder.getAccess(readerWay), EncodingManager.Access.CAN_SKIP);
         readerWay.removeTag("barrier");
     }
 
     @Test
     public void accept() {
-        assertNotEquals(supportTollRoadsFlagEncoder.acceptWay(readerWayWithoutTollBit), 0);
+        assertNotEquals(supportTollRoadsFlagEncoder.getAccess(readerWayWithoutTollBit), EncodingManager.Access.CAN_SKIP);
     }
 
 }

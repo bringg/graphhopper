@@ -26,11 +26,7 @@ import com.graphhopper.coll.GHBitSetImpl;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.routing.util.*;
-import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.storage.CHGraph;
-import com.graphhopper.storage.Graph;
-import com.graphhopper.storage.GraphHopperStorage;
-import com.graphhopper.storage.NodeAccess;
+import com.graphhopper.storage.*;
 import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.util.*;
 import com.graphhopper.util.Parameters.Algorithms;
@@ -82,7 +78,7 @@ public class Measurement {
         }
 
         seed = args.getLong("measurement.seed", 123);
-        String gitCommit = args.get("measurement.gitinfo", "");
+        put("measurement.gitinfo", args.get("measurement.gitinfo", ""));
         int count = args.getInt("measurement.count", 5000);
 
         GraphHopper hopper = new GraphHopperOSM() {
@@ -90,12 +86,18 @@ public class Measurement {
             protected void prepareCH() {
                 StopWatch sw = new StopWatch().start();
                 super.prepareCH();
+                // note that we measure the total time of all (possibly edge&node) CH preparations
                 put(Parameters.CH.PREPARE + "time", sw.stop().getMillis());
-                int edges = getGraphHopperStorage().getAllEdges().length();
-                if (getCHFactoryDecorator().hasWeightings()) {
-                    Weighting weighting = getCHFactoryDecorator().getWeightings().get(0);
-                    int edgesAndShortcuts = getGraphHopperStorage().getGraph(CHGraph.class, weighting).getAllEdges().length();
-                    put(Parameters.CH.PREPARE + "shortcuts", edgesAndShortcuts - edges);
+                int edges = getGraphHopperStorage().getEdges();
+                if (!getCHFactoryDecorator().getNodeBasedCHProfiles().isEmpty()) {
+                    CHProfile chProfile = getCHFactoryDecorator().getNodeBasedCHProfiles().get(0);
+                    int edgesAndShortcuts = getGraphHopperStorage().getCHGraph(chProfile).getEdges();
+                    put(Parameters.CH.PREPARE + "node.shortcuts", edgesAndShortcuts - edges);
+                }
+                if (!getCHFactoryDecorator().getEdgeBasedCHProfiles().isEmpty()) {
+                    CHProfile chProfile = getCHFactoryDecorator().getEdgeBasedCHProfiles().get(0);
+                    int edgesAndShortcuts = getGraphHopperStorage().getCHGraph(chProfile).getEdges();
+                    put(Parameters.CH.PREPARE + "edge.shortcuts", edgesAndShortcuts - edges);
                 }
             }
 
@@ -103,7 +105,7 @@ public class Measurement {
             protected void loadOrPrepareLM() {
                 StopWatch sw = new StopWatch().start();
                 super.loadOrPrepareLM();
-                put(Parameters.Landmark.PREPARE + "time", sw.stop().getMillis());
+                put(Landmark.PREPARE + "time", sw.stop().getMillis());
             }
 
             @Override
@@ -126,8 +128,12 @@ public class Measurement {
         hopper.importOrLoad();
 
         GraphHopperStorage g = hopper.getGraphHopperStorage();
-        String vehicleStr = args.get("graph.flag_encoders", "car");
-        FlagEncoder encoder = hopper.getEncodingManager().getEncoder(vehicleStr);
+        EncodingManager encodingManager = hopper.getEncodingManager();
+        if (encodingManager.fetchEdgeEncoders().size() != 1) {
+            throw new IllegalArgumentException("There has to be exactly one encoder for each measurement");
+        }
+        FlagEncoder encoder = encodingManager.fetchEdgeEncoders().get(0);
+        String vehicleStr = encoder.toString();
 
         StopWatch sw = new StopWatch().start();
         try {
@@ -137,14 +143,16 @@ public class Measurement {
             GHBitSet allowedEdges = printGraphDetails(g, vehicleStr);
             printMiscUnitPerfTests(g, isCH, encoder, count * 100, allowedEdges);
             printLocationIndexQuery(g, hopper.getLocationIndex(), count);
-            printTimeOfRouteQuery(hopper, isCH, isLM, count / 20, "routing", vehicleStr, true, -1, true);
+            printTimeOfRouteQuery(hopper, isCH, isLM, count / 20, "routing", vehicleStr,
+                    true, false, -1, true, false);
 
             if (hopper.getLMFactoryDecorator().isEnabled()) {
                 System.gc();
                 isLM = true;
                 int activeLMCount = 12;
                 for (; activeLMCount > 3; activeLMCount -= 4) {
-                    printTimeOfRouteQuery(hopper, isCH, isLM, count / 4, "routingLM" + activeLMCount, vehicleStr, true, activeLMCount, true);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count / 4, "routingLM" + activeLMCount, vehicleStr,
+                            true, false, activeLMCount, true, false);
                 }
 
                 // compareRouting(hopper, vehicleStr, count / 5);
@@ -158,24 +166,38 @@ public class Measurement {
                     System.gc();
                     // try just one constellation, often ~4-6 is best
                     int lmCount = 5;
-                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCHLM" + lmCount, vehicleStr, true, lmCount, true);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCHLM" + lmCount, vehicleStr,
+                            true, false, lmCount, true, false);
                 }
 
                 isLM = false;
                 System.gc();
-                Weighting weighting = hopper.getCHFactoryDecorator().getWeightings().get(0);
-                CHGraph lg = g.getGraph(CHGraph.class, weighting);
-                fillAllowedEdges(lg.getAllEdges(), allowedEdges);
-                printMiscUnitPerfTests(lg, isCH, encoder, count * 100, allowedEdges);
-                printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH", vehicleStr, true, -1, true);
-                printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_no_sod", vehicleStr, true, -1, false);
-                printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_no_instr", vehicleStr, false, -1, true);
+                if (!hopper.getCHFactoryDecorator().getNodeBasedCHProfiles().isEmpty()) {
+                    CHProfile chProfile = hopper.getCHFactoryDecorator().getNodeBasedCHProfiles().get(0);
+                    CHGraph lg = g.getCHGraph(chProfile);
+                    fillAllowedEdges(lg.getAllEdges(), allowedEdges);
+                    printMiscUnitPerfTests(lg, isCH, encoder, count * 100, allowedEdges);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH", vehicleStr,
+                            true, false, -1, true, false);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_with_hints", vehicleStr,
+                            true, true, -1, true, false);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_no_sod", vehicleStr,
+                            true, false, -1, false, false);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_no_instr", vehicleStr,
+                            false, false, -1, true, false);
+                }
+                if (!hopper.getCHFactoryDecorator().getEdgeBasedCHProfiles().isEmpty()) {
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_edge", vehicleStr,
+                            true, false, -1, false, true);
+                    printTimeOfRouteQuery(hopper, isCH, isLM, count, "routingCH_edge_no_instr", vehicleStr,
+                            false, false, -1, false, true);
+                }
             }
         } catch (Exception ex) {
             logger.error("Problem while measuring " + graphLocation, ex);
             put("error", ex.toString());
         } finally {
-            put("measurement.gitinfo", gitCommit);
+            put("gh.gitinfo", Constants.GIT_INFO);
             put("measurement.count", count);
             put("measurement.seed", seed);
             put("measurement.time", sw.stop().getMillis());
@@ -395,7 +417,8 @@ public class Measurement {
 
     private void printTimeOfRouteQuery(final GraphHopper hopper, final boolean ch, final boolean lm,
                                        int count, String prefix, final String vehicle,
-                                       final boolean withInstructions, final int activeLandmarks, final boolean sod) {
+                                       final boolean withInstructions, final boolean withPointHints,
+                                       final int activeLandmarks, final boolean sod, final boolean edgeBased) {
         final Graph g = hopper.getGraphHopperStorage();
         final AtomicLong maxDistance = new AtomicLong(0);
         final AtomicLong minDistance = new AtomicLong(Long.MAX_VALUE);
@@ -404,6 +427,7 @@ public class Measurement {
         final AtomicInteger failedCount = new AtomicInteger(0);
         final DistanceCalc distCalc = new DistanceCalcEarth();
 
+        final EdgeExplorer edgeExplorer = g.createEdgeExplorer(DefaultEdgeFilter.allEdges(hopper.getEncodingManager().getEncoder(vehicle)));
         final AtomicLong visitedNodesSum = new AtomicLong(0);
 //        final AtomicLong extractTimeSum = new AtomicLong(0);
 //        final AtomicLong calcPointsTimeSum = new AtomicLong(0);
@@ -427,12 +451,24 @@ public class Measurement {
 
                 req.getHints().put(CH.DISABLE, !ch).
                         put("stall_on_demand", sod).
+                        put(Parameters.Routing.EDGE_BASED, edgeBased).
                         put(Landmark.DISABLE, !lm).
                         put(Landmark.ACTIVE_COUNT, activeLandmarks).
                         put("instructions", withInstructions);
 
                 if (withInstructions)
-                    req.setPathDetails(Arrays.asList(Parameters.DETAILS.AVERAGE_SPEED));
+                    req.setPathDetails(Arrays.asList(Parameters.Details.AVERAGE_SPEED));
+
+
+                if (withPointHints) {
+                    EdgeIterator iter = edgeExplorer.setBaseNode(from);
+                    if (!iter.next())
+                        throw new IllegalArgumentException("wrong 'from' when adding point hint");
+                    EdgeIterator iter2 = edgeExplorer.setBaseNode(to);
+                    if (!iter2.next())
+                        throw new IllegalArgumentException("wrong 'to' when adding point hint");
+                    req.setPointHints(Arrays.asList(iter.getName(), iter2.getName()));
+                }
 
                 // put(algo + ".approximation", "BeelineSimplification").
                 // put(algo + ".epsilon", 2);
@@ -485,7 +521,7 @@ public class Measurement {
         count -= failedCount.get();
 
         // if using non-bidirectional algorithm make sure you exclude CH routing
-        String algoStr = ch ? Algorithms.DIJKSTRA_BI : Algorithms.ASTAR_BI;
+        String algoStr = (ch && !edgeBased) ? Algorithms.DIJKSTRA_BI : Algorithms.ASTAR_BI;
         if (ch && !sod) {
             algoStr += "_no_sod";
         }
@@ -544,15 +580,27 @@ public class Measurement {
         String[] properties = {
                 "graph.nodes",
                 "graph.edges",
-                "measurement.seed",
+                "graph.import_time",
                 CH.PREPARE + "time",
-                CH.PREPARE + "shortcuts",
+                CH.PREPARE + "node.shortcuts",
+                CH.PREPARE + "edge.shortcuts",
+                Landmark.PREPARE + "time",
                 "routing.distance_mean",
                 "routing.mean",
                 "routing.visited_nodes_mean",
                 "routingCH.distance_mean",
                 "routingCH.mean",
                 "routingCH.visited_nodes_mean",
+                "routingCH_no_instr.mean",
+                "routingCH_edge.distance_mean",
+                "routingCH_edge.mean",
+                "routingCH_edge.visited_nodes_mean",
+                "routingCH_edge_no_instr.mean",
+                "routingLM8.distance_mean",
+                "routingLM8.mean",
+                "routingLM8.visited_nodes_mean",
+                "measurement.seed",
+                "measurement.gitinfo",
                 "measurement.timestamp"
         };
         File f = new File(summaryLocation);
@@ -596,12 +644,12 @@ public class Measurement {
         try {
             double doubleValue = Double.parseDouble(result.trim());
             if (doubleValue != (long) doubleValue) {
-                result = String.format("%.2f", doubleValue);
+                result = String.format(Locale.US, "%.2f", doubleValue);
             }
         } catch (NumberFormatException e) {
             // its not a number, never mind
         }
-        return String.format("%" + getSummaryColumnWidth(property) + "s, ", result);
+        return String.format(Locale.US, "%" + getSummaryColumnWidth(property) + "s, ", result);
     }
 
     private int getSummaryColumnWidth(String p) {

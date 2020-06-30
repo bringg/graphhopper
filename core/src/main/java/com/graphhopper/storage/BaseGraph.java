@@ -20,19 +20,19 @@ package com.graphhopper.storage;
 import com.graphhopper.coll.GHBitSet;
 import com.graphhopper.coll.GHBitSetImpl;
 import com.graphhopper.coll.SparseIntIntArray;
+import com.graphhopper.routing.profiles.*;
 import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.search.NameIndex;
 import com.graphhopper.util.*;
 import com.graphhopper.util.shapes.BBox;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.graphhopper.util.Helper.nf;
-
 import java.util.Locale;
+
+import static com.graphhopper.util.EdgeIteratorState.REVERSE_STATE;
+import static com.graphhopper.util.Helper.nf;
 
 /**
  * The base graph handles nodes and edges file format. It can be used with different Directory
@@ -46,6 +46,11 @@ import java.util.Locale;
  * loadExisting, (4) usage, (5) flush, (6) close
  */
 class BaseGraph implements Graph {
+    // currently distances are stored as 4 byte integers. using a conversion factor of 1000 the minimum distance
+    // that is not considered zero is 0.0005m (=0.5mm) and the maximum distance per edge is about 2.147.483m=2147km
+    private static final double INT_DIST_FACTOR = 1000d;
+    static double MAX_DIST = Integer.MAX_VALUE / INT_DIST_FACTOR;
+
     final DataAccess edges;
     final DataAccess nodes;
     final BBox bounds;
@@ -55,6 +60,7 @@ class BaseGraph implements Graph {
     final BitUtil bitUtil;
     final EncodingManager encodingManager;
     final EdgeAccess edgeAccess;
+    private final int bytesForFlags;
     // length | nodeA | nextNode | ... | nodeB
     // as we use integer index in 'egdes' area => 'geometry' area is limited to 4GB (we use pos&neg values!)
     private final DataAccess wayGeometry;
@@ -67,7 +73,7 @@ class BaseGraph implements Graph {
     // node memory layout:
     protected int N_EDGE_REF, N_LAT, N_LON, N_ELE, N_ADDITIONAL;
     // edge memory layout not found in EdgeAccess:
-    int E_GEO, E_NAME, E_ADDITIONAL;
+    int E_DIST, E_GEO, E_NAME, E_ADDITIONAL;
     /**
      * Specifies how many entries (integers) are used per edge.
      */
@@ -91,13 +97,14 @@ class BaseGraph implements Graph {
                      InternalGraphEventListener listener, GraphExtension extendedStorage) {
         this.dir = dir;
         this.encodingManager = encodingManager;
+        this.bytesForFlags = encodingManager.getBytesForFlags();
         this.bitUtil = BitUtil.get(dir.getByteOrder());
         this.wayGeometry = dir.find("geometry");
         this.nameIndex = new NameIndex(dir);
-        this.nodes = dir.find("nodes");
-        this.edges = dir.find("edges");
+        this.nodes = dir.find("nodes", DAType.getPreferredInt(dir.getDefaultType()));
+        this.edges = dir.find("edges", DAType.getPreferredInt(dir.getDefaultType()));
         this.listener = listener;
-        this.edgeAccess = new EdgeAccess(edges, bitUtil) {
+        this.edgeAccess = new EdgeAccess(edges) {
             @Override
             final EdgeIterable createSingleEdge(EdgeFilter filter) {
                 return new EdgeIterable(BaseGraph.this, this, filter);
@@ -127,11 +134,6 @@ class BaseGraph implements Graph {
             @Override
             final boolean isInBounds(int edgeId) {
                 return edgeId < edgeCount && edgeId >= 0;
-            }
-
-            @Override
-            final long reverseFlags(long edgePointer, long flags) {
-                return encodingManager.reverseFlags(flags);
             }
 
             @Override
@@ -223,15 +225,13 @@ class BaseGraph implements Graph {
     void initStorage() {
         edgeEntryIndex = 0;
         nodeEntryIndex = 0;
-        boolean flagsSizeIsLong = encodingManager.getBytesForFlags() == 8;
         edgeAccess.init(nextEdgeEntryIndex(4),
                 nextEdgeEntryIndex(4),
                 nextEdgeEntryIndex(4),
                 nextEdgeEntryIndex(4),
-                nextEdgeEntryIndex(4),
-                nextEdgeEntryIndex(encodingManager.getBytesForFlags()),
-                flagsSizeIsLong);
+                nextEdgeEntryIndex(encodingManager.getBytesForFlags()));
 
+        E_DIST = nextEdgeEntryIndex(4);
         E_GEO = nextEdgeEntryIndex(4);
         E_NAME = nextEdgeEntryIndex(4);
         if (extStorage.isRequireEdgeField())
@@ -314,6 +314,11 @@ class BaseGraph implements Graph {
     }
 
     @Override
+    public int getEdges() {
+        return getAllEdges().length();
+    }
+
+    @Override
     public NodeAccess getNodeAccess() {
         return nodeAccess;
     }
@@ -391,15 +396,18 @@ class BaseGraph implements Graph {
         }
         System.out.println("edges:");
         String formatEdges = "%12s | %12s | %12s | %12s | %12s | %12s | %12s \n";
-        System.out.format(Locale.ROOT, formatEdges, "#", "E_NODEA", "E_NODEB", "E_LINKA", "E_LINKB", "E_DIST", "E_FLAGS");
+        System.out.format(Locale.ROOT, formatEdges, "#", "E_NODEA", "E_NODEB", "E_LINKA", "E_LINKB", "E_FLAGS", "E_DIST");
+        IntsRef intsRef = new IntsRef(bytesForFlags / 4);
         for (int i = 0; i < Math.min(edgeCount, printMax); ++i) {
+            long edgePointer = edgeAccess.toPointer(i);
+            edgeAccess.readFlags(edgePointer, intsRef);
             System.out.format(Locale.ROOT, formatEdges, i,
-                    edges.getInt((long) (i * edgeEntryBytes) + edgeAccess.E_NODEA),
-                    edges.getInt((long) (i * edgeEntryBytes) + edgeAccess.E_NODEB),
-                    edges.getInt((long) (i * edgeEntryBytes) + edgeAccess.E_LINKA),
-                    edges.getInt((long) (i * edgeEntryBytes) + edgeAccess.E_LINKB),
-                    edges.getInt((long) (i * edgeEntryBytes) + edgeAccess.E_DIST),
-                    edges.getInt((long) (i * edgeEntryBytes) + edgeAccess.E_FLAGS));
+                    edgeAccess.getNodeA(edgePointer),
+                    edgeAccess.getNodeB(edgePointer),
+                    edgeAccess.getLinkA(edgePointer),
+                    edgeAccess.getLinkB(edgePointer),
+                    intsRef,
+                    getDist(edgePointer));
         }
         if (edgeCount > printMax) {
             System.out.printf(Locale.ROOT, " ... %d more edges", edgeCount - printMax);
@@ -465,12 +473,26 @@ class BaseGraph implements Graph {
     }
 
     /**
-     * @return to
+     * This method copies the properties of one {@link EdgeIteratorState} to another.
+     *
+     * @return the updated iterator the properties where copied to.
      */
-    EdgeIteratorState copyProperties(CommonEdgeIterator from, EdgeIteratorState to) {
+    EdgeIteratorState copyProperties(EdgeIteratorState from, CommonEdgeIterator to) {
+        boolean reverse = from.get(REVERSE_STATE);
+        if (to.reverse)
+            reverse = !reverse;
+        // in case reverse is true we have to swap the nodes to store flags correctly in its "storage direction"
+        int nodeA = reverse ? from.getAdjNode() : from.getBaseNode();
+        int nodeB = reverse ? from.getBaseNode() : from.getAdjNode();
+        long edgePointer = edgeAccess.toPointer(to.getEdge());
+        int linkA = reverse ? edgeAccess.getLinkB(edgePointer) : edgeAccess.getLinkA(edgePointer);
+        int linkB = reverse ? edgeAccess.getLinkA(edgePointer) : edgeAccess.getLinkB(edgePointer);
+        edgeAccess.writeEdge(to.getEdge(), nodeA, nodeB, linkA, linkB);
+        edgeAccess.writeFlags(edgePointer, from.getFlags());
+
+        // copy the rest with higher level API
         to.setDistance(from.getDistance()).
                 setName(from.getName()).
-                setFlags(from.getDirectFlags()).
                 setWayGeometry(from.fetchWayGeometry(0));
 
         if (E_ADDITIONAL >= 0)
@@ -480,7 +502,6 @@ class BaseGraph implements Graph {
 
     /**
      * Create edge between nodes a and b
-     * <p>
      *
      * @return EdgeIteratorState of newly created edge
      */
@@ -507,7 +528,6 @@ class BaseGraph implements Graph {
 
     /**
      * Determine next free edgeId and ensure byte capacity to store edge
-     * <p>
      *
      * @return next free edgeId
      */
@@ -622,9 +642,8 @@ class BaseGraph implements Graph {
         GHBitSet toRemoveSet = new GHBitSetImpl(removeNodeCount);
         removedNodes.copyTo(toRemoveSet);
 
-        Logger logger = LoggerFactory.getLogger(getClass());
         if (removeNodeCount > getNodes() / 2.0)
-            logger.warn("More than a half of the network should be removed!? "
+            LoggerFactory.getLogger(getClass()).warn("More than a half of the network should be removed!? "
                     + "Nodes:" + getNodes() + ", remove:" + removeNodeCount);
 
         EdgeExplorer delExplorer = createEdgeExplorer();
@@ -638,6 +657,7 @@ class BaseGraph implements Graph {
             }
 
             toMoveNodes--;
+            // move only nodes that are not removed
             for (; toMoveNodes >= 0; toMoveNodes--) {
                 if (!removedNodes.contains(toMoveNodes))
                     break;
@@ -657,17 +677,17 @@ class BaseGraph implements Graph {
              removeNode = toRemoveSet.next(removeNode + 1)) {
             // remove all edges connected to the deleted nodes
             adjNodesToDelIter.setBaseNode(removeNode);
-            long prev = EdgeIterator.NO_EDGE;
+            long prevPointer = EdgeIterator.NO_EDGE;
             while (adjNodesToDelIter.next()) {
                 int nodeId = adjNodesToDelIter.getAdjNode();
                 // already invalidated
-                if (nodeId != EdgeAccess.NO_NODE && removedNodes.contains(nodeId)) {
+                if (!EdgeAccess.isInvalidNodeB(nodeId) && removedNodes.contains(nodeId)) {
                     int edgeToRemove = adjNodesToDelIter.getEdge();
                     long edgeToRemovePointer = edgeAccess.toPointer(edgeToRemove);
-                    edgeAccess.internalEdgeDisconnect(edgeToRemove, prev, removeNode, nodeId);
+                    edgeAccess.internalEdgeDisconnect(edgeToRemove, prevPointer, removeNode);
                     edgeAccess.invalidateEdge(edgeToRemovePointer);
                 } else {
-                    prev = adjNodesToDelIter.edgePointer;
+                    prevPointer = adjNodesToDelIter.edgePointer;
                 }
             }
         }
@@ -680,11 +700,11 @@ class BaseGraph implements Graph {
             EdgeIterator movedEdgeIter = movedEdgeExplorer.setBaseNode(oldI);
             while (movedEdgeIter.next()) {
                 int nodeId = movedEdgeIter.getAdjNode();
-                if (nodeId == EdgeAccess.NO_NODE)
+                if (EdgeAccess.isInvalidNodeB(nodeId))
                     continue;
 
                 if (removedNodes.contains(nodeId))
-                    throw new IllegalStateException("shouldn't happen the edge to the node "
+                    throw new IllegalStateException("shouldn't happen as the edge to the node "
                             + nodeId + " should be already deleted. " + oldI);
 
                 toMoveSet.add(nodeId);
@@ -713,7 +733,6 @@ class BaseGraph implements Graph {
                 continue;
 
             // now overwrite exiting edge with new node ids
-            // also flags and links could have changed due to different node order
             int updatedA = oldToNewMap.get(nodeA);
             if (updatedA < 0)
                 updatedA = nodeA;
@@ -722,15 +741,12 @@ class BaseGraph implements Graph {
             if (updatedB < 0)
                 updatedB = nodeB;
 
+            // no need to rewrite flags or other properties as they are independent of the node order unlike in <= 0.11
             int edgeId = iter.getEdge();
             long edgePointer = edgeAccess.toPointer(edgeId);
-            int linkA = edgeAccess.getEdgeRef(nodeA, nodeB, edgePointer);
-            int linkB = edgeAccess.getEdgeRef(nodeB, nodeA, edgePointer);
-            long flags = edgeAccess.getFlags_(edgePointer, false);
+            int linkA = edgeAccess.getLinkA(edgePointer);
+            int linkB = edgeAccess.getLinkB(edgePointer);
             edgeAccess.writeEdge(edgeId, updatedA, updatedB, linkA, linkB);
-            edgeAccess.setFlags_(edgePointer, updatedA > updatedB, flags);
-            if (updatedA < updatedB != nodeA < nodeB)
-                setWayGeometry_(fetchWayGeometry_(edgePointer, true, 0, -1, -1), edgePointer, false);
         }
 
         if (removeNodeCount >= nodeCount)
@@ -783,6 +799,46 @@ class BaseGraph implements Graph {
         return extStorage;
     }
 
+    @Override
+    public int getOtherNode(int edge, int node) {
+        long edgePointer = edgeAccess.toPointer(edge);
+        return edgeAccess.getOtherNode(node, edgePointer);
+    }
+
+    @Override
+    public boolean isAdjacentToNode(int edge, int node) {
+        long edgePointer = edgeAccess.toPointer(edge);
+        return edgeAccess.isAdjacentToNode(node, edgePointer);
+    }
+
+
+    private void setDist(long edgePointer, double distance) {
+        edges.setInt(edgePointer + E_DIST, distToInt(distance));
+    }
+
+    /**
+     * Translates double distance to integer in order to save it in a DataAccess object
+     */
+    private int distToInt(double distance) {
+        if (distance < 0)
+            throw new IllegalArgumentException("Distance cannot be negative: " + distance);
+        if (distance > MAX_DIST) {
+            distance = MAX_DIST;
+        }
+        int integ = (int) Math.round(distance * INT_DIST_FACTOR);
+        assert integ >= 0 : "distance out of range";
+        return integ;
+    }
+
+    /**
+     * returns distance (already translated from integer to double)
+     */
+    private double getDist(long pointer) {
+        int val = edges.getInt(pointer + E_DIST);
+        // do never return infinity even if INT MAX, see #435
+        return val / INT_DIST_FACTOR;
+    }
+
     public void setAdditionalEdgeField(long edgePointer, int value) {
         if (extStorage.isRequireEdgeField() && E_ADDITIONAL >= 0)
             edges.setInt(edgePointer + E_ADDITIONAL, value);
@@ -818,7 +874,7 @@ class BaseGraph implements Graph {
     private void setWayGeometryAtGeoRef(PointList pillarNodes, long edgePointer, boolean reverse, long geoRef) {
         int len = pillarNodes.getSize();
         int dim = nodeAccess.getDimension();
-        long geoRefPosition = (long) geoRef * 4;
+        long geoRefPosition = geoRef * 4;
         int totalLen = len * dim * 4 + 4;
         ensureGeometry(geoRefPosition, totalLen);
         byte[] wayGeometryBytes = createWayGeometryBytes(pillarNodes, reverse);
@@ -942,19 +998,21 @@ class BaseGraph implements Graph {
             this.nextEdgeId = this.edgeId = edgeId;
         }
 
+        /**
+         * @return false if the edge has not a node equal to expectedAdjNode
+         */
         final boolean init(int tmpEdgeId, int expectedAdjNode) {
             setEdgeId(tmpEdgeId);
-            if (tmpEdgeId != EdgeIterator.NO_EDGE) {
-                selectEdgeAccess();
-                this.edgePointer = edgeAccess.toPointer(tmpEdgeId);
-            }
+            if (!EdgeIterator.Edge.isValid(edgeId))
+                throw new IllegalArgumentException("fetching the edge requires a valid edgeId but was " + edgeId);
 
-            // expect only edgePointer is properly initialized via setEdgeId            
-            baseNode = edgeAccess.edges.getInt(edgePointer + edgeAccess.E_NODEA);
-            if (baseNode == EdgeAccess.NO_NODE)
+            selectEdgeAccess();
+            edgePointer = edgeAccess.toPointer(tmpEdgeId);
+            baseNode = edgeAccess.getNodeA(edgePointer);
+            adjNode = edgeAccess.getNodeB(edgePointer);
+            if (EdgeAccess.isInvalidNodeB(adjNode))
                 throw new IllegalStateException("content of edgeId " + edgeId + " is marked as invalid - ie. the edge is already removed!");
 
-            adjNode = edgeAccess.edges.getInt(edgePointer + edgeAccess.E_NODEB);
             // a next() call should return false
             nextEdgeId = EdgeIterator.NO_EDGE;
             if (expectedAdjNode == adjNode || expectedAdjNode == Integer.MIN_VALUE) {
@@ -987,18 +1045,20 @@ class BaseGraph implements Graph {
         @Override
         public final boolean next() {
             while (true) {
-                if (nextEdgeId == EdgeIterator.NO_EDGE)
+                if (!EdgeIterator.Edge.isValid(nextEdgeId))
                     return false;
 
                 selectEdgeAccess();
                 edgePointer = edgeAccess.toPointer(nextEdgeId);
                 edgeId = nextEdgeId;
-                adjNode = edgeAccess.getOtherNode(baseNode, edgePointer);
-                reverse = baseNode > adjNode;
+                int nodeA = edgeAccess.getNodeA(edgePointer);
+                boolean baseNodeIsNodeA = baseNode == nodeA;
+                adjNode = baseNodeIsNodeA ? edgeAccess.getNodeB(edgePointer) : nodeA;
+                reverse = !baseNodeIsNodeA;
                 freshFlags = false;
 
-                // position to next edge                
-                nextEdgeId = edgeAccess.getEdgeRef(baseNode, adjNode, edgePointer);
+                // position to next edge
+                nextEdgeId = baseNodeIsNodeA ? edgeAccess.getLinkA(edgePointer) : edgeAccess.getLinkB(edgePointer);
                 assert nextEdgeId != edgeId : ("endless loop detected for base node: " + baseNode + ", adj node: " + adjNode
                         + ", edge pointer: " + edgePointer + ", edge: " + edgeId);
 
@@ -1009,7 +1069,7 @@ class BaseGraph implements Graph {
 
         @Override
         public EdgeIteratorState detach(boolean reverseArg) {
-            if (edgeId == nextEdgeId || edgeId == EdgeIterator.NO_EDGE)
+            if (edgeId == nextEdgeId || !EdgeIterator.Edge.isValid(edgeId))
                 throw new IllegalStateException("call next before detaching or setEdgeId (edgeId:" + edgeId + " vs. next " + nextEdgeId + ")");
 
             EdgeIterable iter = edgeAccess.createSingleEdge(filter);
@@ -1050,14 +1110,13 @@ class BaseGraph implements Graph {
                 if (!checkRange())
                     return false;
 
-                baseNode = edgeAccess.edges.getInt(edgePointer + edgeAccess.E_NODEA);
-                // some edges are deleted and have a negative node
-                if (baseNode == EdgeAccess.NO_NODE)
+                adjNode = edgeAccess.getNodeB(edgePointer);
+                // some edges are deleted and are marked via a negative node
+                if (EdgeAccess.isInvalidNodeB(adjNode))
                     continue;
 
+                baseNode = edgeAccess.getNodeA(edgePointer);
                 freshFlags = false;
-                adjNode = edgeAccess.edges.getInt(edgePointer + edgeAccess.E_NODEB);
-                // this is always false because of 'getBaseNode() <= getAdjNode()'
                 reverse = false;
                 return true;
             }
@@ -1093,20 +1152,22 @@ class BaseGraph implements Graph {
      */
     static abstract class CommonEdgeIterator implements EdgeIteratorState {
         final BaseGraph baseGraph;
-        protected long edgePointer;
-        protected int baseNode;
-        protected int adjNode;
-        protected EdgeAccess edgeAccess;
+        long edgePointer;
+        int baseNode;
+        int adjNode;
+        EdgeAccess edgeAccess;
         // we need reverse if detach is called
         boolean reverse = false;
         boolean freshFlags;
         int edgeId = -1;
-        private long cachedFlags;
+        private final IntsRef baseIntsRef;
+        int chFlags;
 
         public CommonEdgeIterator(long edgePointer, EdgeAccess edgeAccess, BaseGraph baseGraph) {
             this.edgePointer = edgePointer;
             this.edgeAccess = edgeAccess;
             this.baseGraph = baseGraph;
+            this.baseIntsRef = new IntsRef(baseGraph.bytesForFlags / 4);
         }
 
         @Override
@@ -1120,33 +1181,32 @@ class BaseGraph implements Graph {
         }
 
         @Override
-        public final double getDistance() {
-            return edgeAccess.getDist(edgePointer);
+        public double getDistance() {
+            return baseGraph.getDist(edgePointer);
         }
 
         @Override
-        public final EdgeIteratorState setDistance(double dist) {
-            edgeAccess.setDist(edgePointer, dist);
+        public EdgeIteratorState setDistance(double dist) {
+            baseGraph.setDist(edgePointer, dist);
             return this;
         }
 
-        final long getDirectFlags() {
+        @Override
+        public IntsRef getFlags() {
             if (!freshFlags) {
-                cachedFlags = edgeAccess.getFlags_(edgePointer, reverse);
+                edgeAccess.readFlags(edgePointer, baseIntsRef);
                 freshFlags = true;
             }
-            return cachedFlags;
+            return baseIntsRef;
         }
 
         @Override
-        public long getFlags() {
-            return getDirectFlags();
-        }
-
-        @Override
-        public final EdgeIteratorState setFlags(long fl) {
-            edgeAccess.setFlags_(edgePointer, reverse, fl);
-            cachedFlags = fl;
+        public final EdgeIteratorState setFlags(IntsRef edgeFlags) {
+            assert edgeId < baseGraph.edgeCount : "must be edge but was shortcut: " + edgeId + " >= " + baseGraph.edgeCount + ". Use setFlagsAndWeight";
+            edgeAccess.writeFlags(edgePointer, edgeFlags);
+            for (int i = 0; i < edgeFlags.ints.length; i++) {
+                baseIntsRef.ints[i] = edgeFlags.ints[i];
+            }
             freshFlags = true;
             return this;
         }
@@ -1163,24 +1223,104 @@ class BaseGraph implements Graph {
         }
 
         @Override
-        public final EdgeIteratorState copyPropertiesTo(EdgeIteratorState edge) {
-            return baseGraph.copyProperties(this, edge);
+        public boolean get(BooleanEncodedValue property) {
+            return property.getBool(reverse, getFlags());
         }
 
-        /**
-         * Reports whether the edge is available in forward direction for the specified encoder.
-         */
         @Override
-        public boolean isForward(FlagEncoder encoder) {
-            return encoder.isForward(getDirectFlags());
+        public EdgeIteratorState set(BooleanEncodedValue property, boolean value) {
+            property.setBool(reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
         }
 
-        /**
-         * Reports whether the edge is available in backward direction for the specified encoder.
-         */
         @Override
-        public boolean isBackward(FlagEncoder encoder) {
-            return encoder.isBackward(getDirectFlags());
+        public boolean getReverse(BooleanEncodedValue property) {
+            return property.getBool(!reverse, getFlags());
+        }
+
+        @Override
+        public EdgeIteratorState setReverse(BooleanEncodedValue property, boolean value) {
+            property.setBool(!reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public int get(IntEncodedValue property) {
+            return property.getInt(reverse, getFlags());
+        }
+
+        @Override
+        public EdgeIteratorState set(IntEncodedValue property, int value) {
+            property.setInt(reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public int getReverse(IntEncodedValue property) {
+            return property.getInt(!reverse, getFlags());
+        }
+
+        @Override
+        public EdgeIteratorState setReverse(IntEncodedValue property, int value) {
+            property.setInt(!reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public double get(DecimalEncodedValue property) {
+            return property.getDecimal(reverse, getFlags());
+        }
+
+        @Override
+        public EdgeIteratorState set(DecimalEncodedValue property, double value) {
+            property.setDecimal(reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public double getReverse(DecimalEncodedValue property) {
+            return property.getDecimal(!reverse, getFlags());
+        }
+
+        @Override
+        public EdgeIteratorState setReverse(DecimalEncodedValue property, double value) {
+            property.setDecimal(!reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public <T extends Enum> T get(EnumEncodedValue<T> property) {
+            return property.getEnum(reverse, getFlags());
+        }
+
+        @Override
+        public <T extends Enum> EdgeIteratorState set(EnumEncodedValue<T> property, T value) {
+            property.setEnum(reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public <T extends Enum> T getReverse(EnumEncodedValue<T> property) {
+            return property.getEnum(!reverse, getFlags());
+        }
+
+        @Override
+        public <T extends Enum> EdgeIteratorState setReverse(EnumEncodedValue<T> property, T value) {
+            property.setEnum(!reverse, getFlags(), value);
+            edgeAccess.writeFlags(edgePointer, getFlags());
+            return this;
+        }
+
+        @Override
+        public final EdgeIteratorState copyPropertiesFrom(EdgeIteratorState edge) {
+            return baseGraph.copyProperties(edge, this);
         }
 
         @Override
@@ -1200,6 +1340,16 @@ class BaseGraph implements Graph {
         }
 
         @Override
+        public int getOrigEdgeFirst() {
+            return getEdge();
+        }
+
+        @Override
+        public int getOrigEdgeLast() {
+            return getEdge();
+        }
+
+        @Override
         public String getName() {
             int nameIndexRef = baseGraph.edges.getInt(edgePointer + baseGraph.E_NAME);
             return baseGraph.nameIndex.get(nameIndexRef);
@@ -1209,12 +1359,6 @@ class BaseGraph implements Graph {
         public EdgeIteratorState setName(String name) {
             baseGraph.setName(edgePointer, name);
             return this;
-        }
-
-        @Override
-        public final boolean getBool(int key, boolean _default) {
-            // for non-existent keys return default
-            return _default;
         }
 
         @Override

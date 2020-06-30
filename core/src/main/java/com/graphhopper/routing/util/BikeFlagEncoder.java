@@ -22,7 +22,6 @@ import com.graphhopper.util.PMap;
 
 /**
  * Specifies the settings for cycletouring/trekking
- * <p>
  *
  * @author ratrun
  * @author Peter Karich
@@ -37,8 +36,8 @@ public class BikeFlagEncoder extends BikeCommonFlagEncoder {
     }
 
     public BikeFlagEncoder(PMap properties) {
-        this((int) properties.getLong("speed_bits", 4),
-                properties.getLong("speed_factor", 2),
+        this(properties.getInt("speed_bits", 4),
+                properties.getInt("speed_factor", 2),
                 properties.getBool("turn_costs", false) ? 1 : 0);
         this.properties = properties;
         this.setBlockFords(properties.getBool("block_fords", true));
@@ -50,6 +49,7 @@ public class BikeFlagEncoder extends BikeCommonFlagEncoder {
         addPushingSection("footway");
         addPushingSection("pedestrian");
         addPushingSection("steps");
+        addPushingSection("platform");
 
         avoidHighwayTags.add("trunk");
         avoidHighwayTags.add("trunk_link");

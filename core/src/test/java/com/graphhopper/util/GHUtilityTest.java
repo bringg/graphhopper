@@ -18,6 +18,7 @@
 package com.graphhopper.util;
 
 import com.graphhopper.coll.GHIntLongHashMap;
+import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.util.CarFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.FlagEncoder;
@@ -32,7 +33,8 @@ import static org.junit.Assert.*;
  */
 public class GHUtilityTest {
     private final FlagEncoder carEncoder = new CarFlagEncoder();
-    private final EncodingManager encodingManager = new EncodingManager(carEncoder);
+    private final EncodingManager encodingManager = EncodingManager.create(carEncoder);
+    private final BooleanEncodedValue accessEnc = carEncoder.getAccessEnc();
 
     Graph createGraph() {
         return new GraphBuilder(encodingManager).create();
@@ -109,10 +111,10 @@ public class GHUtilityTest {
         Graph g = initUnsorted(createGraph());
         g.edge(0, 0, 11, true);
 
-        CHGraph lg = new GraphBuilder(encodingManager).chGraphCreate(new FastestWeighting(carEncoder));
+        CHGraph lg = new GraphBuilder(encodingManager).chGraphCreate(CHProfile.nodeBased(new FastestWeighting(carEncoder)));
         GHUtility.copyTo(g, lg);
 
-        assertEquals(g.getAllEdges().length(), lg.getAllEdges().length());
+        assertEquals(g.getAllEdges().length(), lg.getEdges());
     }
 
     @Test
@@ -121,8 +123,8 @@ public class GHUtilityTest {
         EdgeIteratorState edgeState = g.edge(6, 5, 11, true);
         edgeState.setWayGeometry(Helper.createPointList(12, 10, -1, 3));
 
-        GraphHopperStorage newStore = new GraphBuilder(encodingManager).setCHGraph(new FastestWeighting(carEncoder)).create();
-        CHGraph lg = newStore.getGraph(CHGraph.class);
+        GraphHopperStorage newStore = new GraphBuilder(encodingManager).setCHProfiles(CHProfile.nodeBased(new FastestWeighting(carEncoder))).create();
+        CHGraph lg = newStore.getCHGraph();
         GHUtility.copyTo(g, lg);
         newStore.freeze();
 
@@ -140,12 +142,12 @@ public class GHUtilityTest {
         EdgeIterator iter = lg.createEdgeExplorer().setBaseNode(8);
         iter.next();
         assertEquals(2.05, iter.getDistance(), 1e-6);
-        assertTrue(iter.isBackward(carEncoder));
-        assertTrue(iter.isForward(carEncoder));
+        assertTrue(iter.getReverse(accessEnc));
+        assertTrue(iter.get(accessEnc));
         iter.next();
         assertEquals(0.5, iter.getDistance(), 1e-6);
-        assertTrue(iter.isBackward(carEncoder));
-        assertTrue(iter.isForward(carEncoder));
+        assertTrue(iter.getReverse(accessEnc));
+        assertTrue(iter.get(accessEnc));
 
         iter = lg.createEdgeExplorer().setBaseNode(7);
         iter.next();
@@ -153,8 +155,8 @@ public class GHUtilityTest {
 
         iter.next();
         assertEquals(2.1, iter.getDistance(), 1e-6);
-        assertFalse(iter.isBackward(carEncoder));
-        assertTrue(iter.isForward(carEncoder));
+        assertFalse(iter.getReverse(accessEnc));
+        assertTrue(iter.get(accessEnc));
         assertFalse(iter.next());
     }
 
@@ -167,6 +169,9 @@ public class GHUtilityTest {
 
         assertEquals(8, GHUtility.createEdgeKey(1, 2, 4, false));
         assertEquals(9, GHUtility.createEdgeKey(2, 1, 4, false));
+
+        assertEquals(6, GHUtility.createEdgeKey(1, 1, 3, false));
+        assertEquals(6, GHUtility.createEdgeKey(1, 1, 3, true));
 
         assertTrue(GHUtility.isSameEdgeKeys(GHUtility.createEdgeKey(1, 2, 4, false), GHUtility.createEdgeKey(1, 2, 4, false)));
         assertTrue(GHUtility.isSameEdgeKeys(GHUtility.createEdgeKey(2, 1, 4, false), GHUtility.createEdgeKey(1, 2, 4, false)));
@@ -194,9 +199,9 @@ public class GHUtilityTest {
 //        TIntLongHashMap map2 = new TIntLongHashMap(100, 0.7f, -1, -1);
 //        assertFalse(map2.containsKey(0));
 //        assertFalse(map2.containsValue(0));
-//        map2.put(0, 3);
-//        map2.put(1, 0);
-//        map2.put(2, 1);
+//        map2.add(0, 3);
+//        map2.add(1, 0);
+//        map2.add(2, 1);
 //        assertTrue(map2.containsKey(0));
 //        assertTrue(map2.containsValue(0));
 //        assertEquals(3, map2.get(0));

@@ -17,7 +17,6 @@
  */
 package com.graphhopper.routing;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.graphhopper.routing.util.DefaultEdgeFilter;
 import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.routing.util.FlagEncoder;
@@ -72,7 +71,9 @@ public abstract class AbstractRoutingAlgorithm implements RoutingAlgorithm {
     }
 
     protected boolean accept(EdgeIteratorState iter, int prevOrNextEdgeId) {
-        if (!traversalMode.hasUTurnSupport() && iter.getEdge() == prevOrNextEdgeId)
+        // for edge-based traversal we leave it for TurnWeighting to decide whether or not a u-turn is acceptable,
+        // but for node-based traversal we exclude such a turn for performance reasons already here
+        if (!traversalMode.isEdgeBased() && iter.getEdge() == prevOrNextEdgeId)
             return false;
 
         return additionalEdgeFilter == null || additionalEdgeFilter.accept(iter);
@@ -124,10 +125,5 @@ public abstract class AbstractRoutingAlgorithm implements RoutingAlgorithm {
 
     protected boolean isMaxVisitedNodesExceeded() {
         return maxVisitedNodes < getVisitedNodes();
-    }
-
-    @VisibleForTesting
-    public Weighting getWeighting() {
-        return weighting;
     }
 }

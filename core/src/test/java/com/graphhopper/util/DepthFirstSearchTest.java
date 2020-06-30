@@ -18,7 +18,10 @@
 package com.graphhopper.util;
 
 import com.carrotsearch.hppc.IntArrayList;
+import com.graphhopper.coll.GHBitSet;
+import com.graphhopper.coll.GHBitSetImpl;
 import com.graphhopper.coll.GHIntHashSet;
+import com.graphhopper.coll.GHTBitSet;
 import com.graphhopper.routing.util.DefaultEdgeFilter;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.FlagEncoder;
@@ -48,6 +51,11 @@ public class DepthFirstSearchTest {
     public void testDFS1() {
         DepthFirstSearch dfs = new DepthFirstSearch() {
             @Override
+            protected GHBitSet createBitSet() {
+                return new GHBitSetImpl();
+            }
+
+            @Override
             public boolean goFurther(int v) {
                 counter++;
                 assertTrue("v " + v + " is already contained in set. iteration:" + counter, !set.contains(v));
@@ -57,7 +65,7 @@ public class DepthFirstSearchTest {
             }
         };
 
-        EncodingManager em = new EncodingManager("car");
+        EncodingManager em = EncodingManager.create("car");
         FlagEncoder fe = em.getEncoder("car");
         Graph g = new GraphBuilder(em).create();
         g.edge(1, 2, 1, false);
@@ -78,6 +86,11 @@ public class DepthFirstSearchTest {
     public void testDFS2() {
         DepthFirstSearch dfs = new DepthFirstSearch() {
             @Override
+            protected GHBitSet createBitSet() {
+                return new GHBitSetImpl();
+            }
+
+            @Override
             public boolean goFurther(int v) {
                 counter++;
                 assertTrue("v " + v + " is already contained in set. iteration:" + counter, !set.contains(v));
@@ -87,7 +100,7 @@ public class DepthFirstSearchTest {
             }
         };
 
-        EncodingManager em = new EncodingManager("car");
+        EncodingManager em = EncodingManager.create("car");
         FlagEncoder fe = em.getEncoder("car");
         Graph g = new GraphBuilder(em).create();
         g.edge(1, 2, 1, false);

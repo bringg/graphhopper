@@ -22,12 +22,11 @@ import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopperAPI;
 import com.graphhopper.MultiException;
 import com.graphhopper.http.WebHelper;
-import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.util.Constants;
-import com.graphhopper.util.Helper;
-import com.graphhopper.util.Parameters;
+import com.graphhopper.util.InstructionList;
 import com.graphhopper.util.StopWatch;
+import com.graphhopper.util.gpx.GpxFromInstructions;
 import com.graphhopper.util.shapes.GHPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static com.graphhopper.util.Parameters.Details.PATH_DETAILS;
 import static com.graphhopper.util.Parameters.Routing.*;
 
 /**
@@ -83,8 +83,9 @@ public class RouteResource {
             @QueryParam("weighting") @DefaultValue("fastest") String weighting,
             @QueryParam("algorithm") @DefaultValue("") String algoStr,
             @QueryParam("locale") @DefaultValue("en") String localeStr,
-            @QueryParam(Parameters.Routing.POINT_HINT) List<String> pointHints,
-            @QueryParam(Parameters.DETAILS.PATH_DETAILS) List<String> pathDetails,
+            @QueryParam(POINT_HINT) List<String> pointHints,
+            @QueryParam(SNAP_PREVENTION) List<String> snapPreventions,
+            @QueryParam(PATH_DETAILS) List<String> pathDetails,
             @QueryParam("heading") List<Double> favoredHeadings,
             @QueryParam("gpx.route") @DefaultValue("true") boolean withRoute /* default to false for the route part in next API version, see #437 */,
             @QueryParam("gpx.track") @DefaultValue("true") boolean withTrack,
@@ -121,11 +122,13 @@ public class RouteResource {
         }
 
         initHints(request.getHints(), uriInfo.getQueryParameters());
+        translateTurnCostsParamToEdgeBased(request, uriInfo.getQueryParameters());
         request.setVehicle(vehicleStr).
                 setWeighting(weighting).
                 setAlgorithm(algoStr).
                 setLocale(localeStr).
                 setPointHints(pointHints).
+                setSnapPreventions(snapPreventions).
                 setPathDetails(pathDetails).
                 getHints().
                 put(CALC_POINTS, calcPoints).
@@ -161,6 +164,16 @@ public class RouteResource {
         }
     }
 
+    private void translateTurnCostsParamToEdgeBased(GHRequest request, MultivaluedMap<String, String> queryParams) {
+        if (queryParams.containsKey(TURN_COSTS)) {
+            List<String> turnCosts = queryParams.get(TURN_COSTS);
+            if (turnCosts.size() != 1) {
+                throw new IllegalArgumentException("You may only specify the turn_costs parameter once");
+            }
+            request.getHints().put(EDGE_BASED, turnCosts.get(0));
+        }
+    }
+
     private static Response.ResponseBuilder gpxSuccessResponseBuilder(GHResponse ghRsp, String timeString, String
             trackName, boolean enableElevation, boolean withRoute, boolean withTrack, boolean withWayPoints, String version) {
         if (ghRsp.getAll().size() > 1) {
@@ -168,7 +181,8 @@ public class RouteResource {
         }
 
         long time = timeString != null ? Long.parseLong(timeString) : System.currentTimeMillis();
-        return Response.ok(ghRsp.getBest().getInstructions().createGPX(trackName, time, enableElevation, withRoute, withTrack, withWayPoints, version), "application/gpx+xml").
+        InstructionList instructions = ghRsp.getBest().getInstructions();
+        return Response.ok(GpxFromInstructions.createGPX(instructions, trackName, time, enableElevation, withRoute, withTrack, withWayPoints, version, instructions.getTr()), "application/gpx+xml").
                 header("Content-Disposition", "attachment;filename=" + "GraphHopper.gpx");
     }
 

@@ -19,6 +19,7 @@ package com.graphhopper.routing.util;
 
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
+import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.PMap;
 
 import java.util.TreeMap;
@@ -109,6 +110,7 @@ public class MountainBikeFlagEncoder extends BikeCommonFlagEncoder {
         setHighwaySpeed("tertiary_link", 18);
 
         addPushingSection("footway");
+        addPushingSection("platform");
         addPushingSection("pedestrian");
         addPushingSection("steps");
 
@@ -160,15 +162,15 @@ public class MountainBikeFlagEncoder extends BikeCommonFlagEncoder {
     }
 
     @Override
-    public long handleRelationTags(ReaderRelation relation, long oldRelationFlags) {
-        oldRelationFlags = super.handleRelationTags(relation, oldRelationFlags);
+    public long handleRelationTags(long oldRelationFlags, ReaderRelation relation) {
+        super.handleRelationTags(oldRelationFlags, relation);
         int code = 0;
         if (relation.hasTag("route", "mtb"))
             code = PREFER.getValue();
 
         int oldCode = (int) relationCodeEncoder.getValue(oldRelationFlags);
         if (oldCode < code)
-            return relationCodeEncoder.setValue(0, code);
+            relationCodeEncoder.setValue(oldRelationFlags, code);
         return oldRelationFlags;
     }
 

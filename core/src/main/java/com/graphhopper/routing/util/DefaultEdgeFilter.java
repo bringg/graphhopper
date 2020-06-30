@@ -17,28 +17,35 @@
  */
 package com.graphhopper.routing.util;
 
+import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.util.EdgeIteratorState;
 
 /**
  * @author Peter Karich
  */
 public class DefaultEdgeFilter implements EdgeFilter {
+    private static int DEFAULT_FILTER_ID = 0;
     private final boolean bwd;
     private final boolean fwd;
-    private FlagEncoder encoder;
+    private final BooleanEncodedValue accessEnc;
+    /**
+     * Used to be able to create non-equal filter instances with equal access encoder and fwd/bwd flags.
+     */
+    private int filterId;
 
-    protected DefaultEdgeFilter(FlagEncoder encoder, boolean fwd, boolean bwd) {
-        this.encoder = encoder;
-        this.bwd = bwd;
+    private DefaultEdgeFilter(BooleanEncodedValue accessEnc, boolean fwd, boolean bwd, int filterId) {
+        this.accessEnc = accessEnc;
         this.fwd = fwd;
+        this.bwd = bwd;
+        this.filterId = filterId;
     }
 
-    public static DefaultEdgeFilter outEdges(FlagEncoder flagEncoder) {
-        return new DefaultEdgeFilter(flagEncoder, true, false);
+    public static DefaultEdgeFilter outEdges(BooleanEncodedValue accessEnc) {
+        return new DefaultEdgeFilter(accessEnc, true, false, DEFAULT_FILTER_ID);
     }
 
-    public static DefaultEdgeFilter inEdges(FlagEncoder flagEncoder) {
-        return new DefaultEdgeFilter(flagEncoder, false, true);
+    public static DefaultEdgeFilter inEdges(BooleanEncodedValue accessEnc) {
+        return new DefaultEdgeFilter(accessEnc, false, true, DEFAULT_FILTER_ID);
     }
 
     /**
@@ -46,25 +53,67 @@ public class DefaultEdgeFilter implements EdgeFilter {
      * Edges where neither one of the flags is enabled will still not be accepted. If you need to retrieve all edges
      * regardless of their encoding use {@link EdgeFilter#ALL_EDGES} instead.
      */
+    public static DefaultEdgeFilter allEdges(BooleanEncodedValue accessEnc) {
+        return new DefaultEdgeFilter(accessEnc, true, true, DEFAULT_FILTER_ID);
+    }
+
+    public static DefaultEdgeFilter outEdges(FlagEncoder flagEncoder) {
+        return DefaultEdgeFilter.outEdges(flagEncoder.getAccessEnc());
+    }
+
+    public static DefaultEdgeFilter inEdges(FlagEncoder flagEncoder) {
+        return DefaultEdgeFilter.inEdges(flagEncoder.getAccessEnc());
+    }
+
     public static DefaultEdgeFilter allEdges(FlagEncoder flagEncoder) {
-        return new DefaultEdgeFilter(flagEncoder, true, true);
+        return DefaultEdgeFilter.allEdges(flagEncoder.getAccessEnc());
+    }
+
+    public DefaultEdgeFilter setFilterId(int filterId) {
+        this.filterId = filterId;
+        return this;
+    }
+
+    public BooleanEncodedValue getAccessEnc() {
+        return accessEnc;
     }
 
     @Override
     public final boolean accept(EdgeIteratorState iter) {
-        return fwd && iter.isForward(encoder) || bwd && iter.isBackward(encoder);
-    }
-
-    public boolean acceptsBackward() {
-        return bwd;
-    }
-
-    public boolean acceptsForward() {
-        return fwd;
+        if (iter.getBaseNode() == iter.getAdjNode()) {
+            // this is needed for edge-based CH, see #1525
+            // background: we need to explicitly accept shortcut edges that are loops, because if we insert a loop
+            // shortcut with the fwd flag a DefaultEdgeFilter with bwd=true and fwd=false does not find it, although
+            // it is also an 'incoming' edge.
+            return iter.get(accessEnc) || iter.getReverse(accessEnc);
+        }
+        return fwd && iter.get(accessEnc) || bwd && iter.getReverse(accessEnc);
     }
 
     @Override
     public String toString() {
-        return encoder.toString() + ", bwd:" + bwd + ", fwd:" + fwd;
+        return accessEnc.toString() + ", bwd:" + bwd + ", fwd:" + fwd;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DefaultEdgeFilter that = (DefaultEdgeFilter) o;
+
+        if (bwd != that.bwd) return false;
+        if (fwd != that.fwd) return false;
+        if (filterId != that.filterId) return false;
+        return accessEnc.equals(that.accessEnc);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (bwd ? 1 : 0);
+        result = 31 * result + (fwd ? 1 : 0);
+        result = 31 * result + accessEnc.hashCode();
+        result = 31 * result + filterId;
+        return result;
     }
 }

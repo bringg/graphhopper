@@ -30,6 +30,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import com.graphhopper.routing.VirtualEdgeIteratorState;
 import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.routing.util.EdgeFilter;
+import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.Graph;
 import com.graphhopper.storage.GraphExtension;
 import com.graphhopper.storage.GraphHopperStorage;
@@ -42,24 +43,13 @@ import org.mapdb.Fun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -114,6 +104,7 @@ public class RealtimeFeed {
         final LinkedList<VirtualEdgeIteratorState> additionalEdges = new LinkedList<>();
         final Graph overlayGraph = new Graph() {
             int firstEdge = graphHopperStorage.getAllEdges().length();
+            EncodingManager encodingManager = graphHopperStorage.getEncodingManager();
             final NodeAccess nodeAccess = new NodeAccess() {
                 IntIntHashMap additionalNodeFields = new IntIntHashMap();
 
@@ -182,6 +173,7 @@ public class RealtimeFeed {
                     return 0;
                 }
             };
+
             @Override
             public Graph getBaseGraph() {
                 return graphHopperStorage;
@@ -190,9 +182,14 @@ public class RealtimeFeed {
             @Override
             public int getNodes() {
                 return IntStream.concat(
-                        IntStream.of(graphHopperStorage.getNodes()-1),
+                        IntStream.of(graphHopperStorage.getNodes() - 1),
                         additionalEdges.stream().flatMapToInt(edge -> IntStream.of(edge.getBaseNode(), edge.getAdjNode())))
-                        .max().getAsInt()+1;
+                        .max().getAsInt() + 1;
+            }
+
+            @Override
+            public int getEdges() {
+                return getAllEdges().length();
             }
 
             @Override
@@ -209,9 +206,9 @@ public class RealtimeFeed {
             public EdgeIteratorState edge(int a, int b) {
                 int edge = firstEdge++;
                 final VirtualEdgeIteratorState newEdge = new VirtualEdgeIteratorState(-1,
-                        edge, a, b, 0.0, 0, "", new PointList());
+                        edge, a, b, 0.0, encodingManager.createEdgeFlags(), "", new PointList(), false);
                 final VirtualEdgeIteratorState reverseNewEdge = new VirtualEdgeIteratorState(-1,
-                        edge, b, a, 0.0, 0, "", new PointList());
+                        edge, b, a, 0.0, encodingManager.createEdgeFlags(), "", new PointList(), true);
                 newEdge.setReverseEdge(reverseNewEdge);
                 reverseNewEdge.setReverseEdge(newEdge);
                 additionalEdges.push(newEdge);
@@ -251,6 +248,16 @@ public class RealtimeFeed {
             @Override
             public GraphExtension getExtension() {
                 throw new RuntimeException();
+            }
+
+            @Override
+            public int getOtherNode(int edge, int node) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean isAdjacentToNode(int edge, int node) {
+                throw new UnsupportedOperationException();
             }
         };
 
@@ -319,7 +326,7 @@ public class RealtimeFeed {
                 }
 
                 @Override
-                public Map<Integer, String> getRoutes() {
+                public Map<Integer, PlatformDescriptor> getRoutes() {
                     return staticGtfs.getRoutes();
                 }
             };
@@ -327,7 +334,7 @@ public class RealtimeFeed {
             Instant timestamp = Instant.ofEpochSecond(feedMessage.getHeader().getTimestamp());
             LocalDate dateToChange = timestamp.atZone(timezone).toLocalDate(); //FIXME
             BitSet validOnDay = new BitSet();
-            LocalDate startDate = feed.calculateStats().getStartDate();
+            LocalDate startDate = feed.getStartDate();
             validOnDay.set((int) DAYS.between(startDate, dateToChange));
             feedMessage.getEntityList().stream()
                     .filter(GtfsRealtime.FeedEntity::hasTripUpdate)
@@ -352,8 +359,8 @@ public class RealtimeFeed {
                                 });
                         GtfsReader.TripWithStopTimes tripWithStopTimes = toTripWithStopTimes(feed, tripUpdate);
                         tripWithStopTimes.stopTimes.forEach(stopTime -> {
-                            if (stopTime.stop_sequence > leaveEdges.length-1) {
-                                logger.warn("Stop sequence number too high {} vs {}",stopTime.stop_sequence, leaveEdges.length);
+                            if (stopTime.stop_sequence > leaveEdges.length - 1) {
+                                logger.warn("Stop sequence number too high {} vs {}", stopTime.stop_sequence, leaveEdges.length);
                                 return;
                             }
                             final StopTime originalStopTime = feed.stop_times.get(new Fun.Tuple2(tripUpdate.getTrip().getTripId(), stopTime.stop_sequence));
@@ -392,7 +399,7 @@ public class RealtimeFeed {
                         GtfsReader.TripWithStopTimes tripWithStopTimes = new GtfsReader.TripWithStopTimes(trip, stopTimes, validOnDay, Collections.emptySet(), Collections.emptySet());
                         gtfsReader.addTrip(timezone, 0, new ArrayList<>(), tripWithStopTimes, tripUpdate.getTrip(), false);
                     });
-            gtfsReader.wireUpAdditionalDepartures(timezone);
+            gtfsReader.wireUpAdditionalDeparturesAndArrivals(timezone);
         });
 
         return new RealtimeFeed(staticGtfs, feedMessages, blockedEdges, delaysForBoardEdges, delaysForAlightEdges, additionalEdges, tripDescriptors, stopSequences, operatingDayPatterns, writableTimeZones);
@@ -407,17 +414,28 @@ public class RealtimeFeed {
     }
 
     public Optional<GtfsReader.TripWithStopTimes> getTripUpdate(GTFSFeed staticFeed, GtfsRealtime.TripDescriptor tripDescriptor, Label.Transition boardEdge, Instant boardTime) {
-        logger.trace("getTripUpdate {}", tripDescriptor);
-        if (!isThisRealtimeUpdateAboutThisLineRun(boardEdge.edge.edgeIteratorState, boardTime)) {
+        try {
+            logger.trace("getTripUpdate {}", tripDescriptor);
+            if (!isThisRealtimeUpdateAboutThisLineRun(boardEdge.edge.edgeIteratorState, boardTime)) {
+                return Optional.empty();
+            } else {
+                GtfsRealtime.TripDescriptor normalizedTripDescriptor = normalize(tripDescriptor);
+                return feedMessages.values().stream().flatMap(feedMessage -> feedMessage.getEntityList().stream()
+                        .filter(e -> e.hasTripUpdate())
+                        .map(e -> e.getTripUpdate())
+                        .filter(tu -> normalize(tu.getTrip()).equals(normalizedTripDescriptor))
+                        .map(tu -> toTripWithStopTimes(staticFeed, tu)))
+                        .findFirst();
+            }
+        } catch (RuntimeException e) {
+            feedMessages.forEach((name, feed) -> {
+                try (OutputStream s = new FileOutputStream(name+".gtfsdump")) {
+                    feed.writeTo(s);
+                } catch (IOException e1) {
+                    throw new RuntimeException();
+                }
+            });
             return Optional.empty();
-        } else {
-            GtfsRealtime.TripDescriptor normalizedTripDescriptor = normalize(tripDescriptor);
-            return feedMessages.values().stream().flatMap(feedMessage -> feedMessage.getEntityList().stream()
-                    .filter(e -> e.hasTripUpdate())
-                    .map(e -> e.getTripUpdate())
-                    .filter(tu -> normalize(tu.getTrip()).equals(normalizedTripDescriptor))
-                    .map(tu -> toTripWithStopTimes(staticFeed, tu)))
-                    .findFirst();
         }
     }
 
@@ -454,8 +472,8 @@ public class RealtimeFeed {
         ) + 1;
         stopTimeUpdateListWithSentinel.add(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder().setStopSequence(stopSequenceCeiling).setScheduleRelationship(NO_DATA).build());
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : stopTimeUpdateListWithSentinel) {
-            int nextStopSequence = stopTimes.isEmpty() ? 1 : stopTimes.get(stopTimes.size()-1).stop_sequence+1;
-            for (int i=nextStopSequence; i<stopTimeUpdate.getStopSequence(); i++) {
+            int nextStopSequence = stopTimes.isEmpty() ? 1 : stopTimes.get(stopTimes.size() - 1).stop_sequence + 1;
+            for (int i = nextStopSequence; i < stopTimeUpdate.getStopSequence(); i++) {
                 StopTime previousOriginalStopTime = feed.stop_times.get(new Fun.Tuple2(tripUpdate.getTrip().getTripId(), i));
                 if (previousOriginalStopTime == null) {
                     continue; // This can and does happen. Stop sequence numbers can be left out.
@@ -508,6 +526,9 @@ public class RealtimeFeed {
                 stopTimes.add(stopTime);
                 logger.trace("Number of stop times: {}", stopTimes.size());
             } else {
+                // http://localhost:3000/route?point=45.51043713898763%2C-122.68381118774415&point=45.522104713562825%2C-122.6455307006836&weighting=fastest&pt.earliest_departure_time=2018-08-24T16%3A56%3A17Z&arrive_by=false&pt.max_walk_distance_per_leg=1000&pt.limit_solutions=5&locale=en-US&vehicle=pt&elevation=false&use_miles=false&points_encoded=false&pt.profile=true
+                // long query:
+                // http://localhost:3000/route?point=45.518526513612244%2C-122.68612861633302&point=45.52908004573869%2C-122.6862144470215&weighting=fastest&pt.earliest_departure_time=2018-08-24T16%3A51%3A20Z&arrive_by=false&pt.max_walk_distance_per_leg=10000&pt.limit_solutions=4&locale=en-US&vehicle=pt&elevation=false&use_miles=false&points_encoded=false&pt.profile=true
                 throw new RuntimeException();
             }
         }
@@ -562,7 +583,7 @@ public class RealtimeFeed {
     public StopTime getStopTime(GTFSFeed staticFeed, GtfsRealtime.TripDescriptor tripDescriptor, Label.Transition t, Instant boardTime, int stopSequence) {
         StopTime stopTime = staticFeed.stop_times.get(new Fun.Tuple2<>(tripDescriptor.getTripId(), stopSequence));
         if (stopTime == null) {
-            return getTripUpdate(staticFeed, tripDescriptor, t, boardTime).get().stopTimes.get(stopSequence-1);
+            return getTripUpdate(staticFeed, tripDescriptor, t, boardTime).get().stopTimes.get(stopSequence - 1);
         } else {
             return stopTime;
         }
