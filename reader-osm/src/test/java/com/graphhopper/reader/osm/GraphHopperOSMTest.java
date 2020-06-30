@@ -18,6 +18,7 @@
 package com.graphhopper.reader.osm;
 
 import com.carrotsearch.hppc.IntArrayList;
+import com.google.common.collect.ImmutableList;
 import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
@@ -29,6 +30,7 @@ import com.graphhopper.routing.*;
 import com.graphhopper.routing.ch.CHAlgoFactoryDecorator;
 import com.graphhopper.routing.ch.PrepareContractionHierarchies;
 import com.graphhopper.routing.lm.PrepareLandmarks;
+import com.graphhopper.routing.profiles.Toll;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.routing.weighting.AbstractWeighting;
 import com.graphhopper.routing.weighting.FastestWeighting;
@@ -37,8 +39,10 @@ import com.graphhopper.storage.*;
 import com.graphhopper.storage.index.LocationIndexTree;
 import com.graphhopper.util.*;
 import com.graphhopper.util.Parameters.Routing;
+import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.shapes.BBox;
 import com.graphhopper.util.shapes.GHPoint;
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -655,6 +659,45 @@ public class GraphHopperOSMTest {
         PathWrapper rsp = grsp.getBest();
         // the last points snaps to the edge
         assertEquals(Helper.createPointList(11.1, 50, 10, 51, 11.194015, 51.995013), rsp.getPoints());
+    }
+
+    @Test
+    public void testFastestWeightingWithTollRoads() {
+        try{
+            FileUtils.deleteDirectory(new File("./src/test/resources/com/graphhopper/reader/osm/us-ny-test.osm-gh"));
+        } catch (IOException e) {}
+        CmdArgs cmdArgs = new CmdArgs();
+        final GraphHopper graphHopper = new GraphHopperOSM();
+        cmdArgs.put("datareader.file", "./src/test/resources/com/graphhopper/reader/osm/us-ny-test.osm.pbf");
+        cmdArgs.put("graph.flag_encoders", "car|turn_costs=true");
+        cmdArgs.put("graph.encoded_values", "toll");
+        cmdArgs.put("prepare.ch.weightings", "fastest,fastest_with_toll_road_weights");
+        cmdArgs.put("prepare.ch.weighting_with_penalties", "true");
+        cmdArgs.put("weightings.toll_road_penalty", "100");
+        cmdArgs.put("weightings.add_turn_penalties", Boolean.FALSE.toString());
+        cmdArgs.put("prepare.ch.edge_based", "edge_or_node");
+        graphHopper.init(cmdArgs);
+        graphHopper.importOrLoad();
+        GHRequest ghRequest = new GHRequest(40.606644, -74.032143, 40.598876, -74.063713);
+        ghRequest.setPathDetails(ImmutableList.of(Toll.KEY));
+        ghRequest.setWeighting("fastest");
+        final GHResponse routeWithoutToll = graphHopper.route(ghRequest);
+        assertFalse(routeWithoutToll.hasErrors());
+        final List<PathDetail> pathDetails = routeWithoutToll.getBest().getPathDetails().get(Toll.KEY);
+        assertEquals(3, pathDetails.size());
+        assertEquals(Toll.NO.toString(), pathDetails.get(0).getValue());
+        assertEquals(Toll.ALL.toString(), pathDetails.get(1).getValue());
+        assertEquals(Toll.NO.toString(), pathDetails.get(2).getValue());
+        ghRequest.setWeighting("fastest_with_toll_road_weights");
+        final GHResponse routeWithToll = graphHopper.route(ghRequest);
+        assertFalse(routeWithToll.hasErrors());
+        final List<PathDetail> pathDetailsWithToll = routeWithToll.getBest().getPathDetails().get(Toll.KEY);
+        assertEquals(3, pathDetailsWithToll.size());
+        assertEquals(Toll.NO.toString(), pathDetailsWithToll.get(0).getValue());
+        assertEquals(Toll.ALL.toString(), pathDetailsWithToll.get(1).getValue());
+        assertEquals(Toll.NO.toString(), pathDetailsWithToll.get(2).getValue());
+        assertTrue(routeWithoutToll.getBest().getRouteWeight() < routeWithToll.getBest().getRouteWeight());
+        graphHopper.close();
     }
 
     @Test
