@@ -90,7 +90,7 @@ public class WeightingWithPenalties extends AbstractWeighting {
         try {
             visitedEdgesCoordinates.put(edge.getEdge(), wayData);
         } catch (Exception e) {
-            logger.error("failed to put, size {} error {}", visitedEdgesCoordinates.size(), e);
+            logger.warn("failed to put, size {} error {}", visitedEdgesCoordinates.size(), e);
             return 0;
         }
         WayData prevWayData;
