@@ -2,17 +2,19 @@
 @Library('ci-scripts') _
 
 pipeline {
-    agent {
-        docker { image 'maven:3.5.3-jdk-10-slim' }
-    }
+    agent any
 
     stages {
         stage('Test') {
             environment {
-                CODECOV_TOKEN = '5b1293bb-5536-4f60-bfa3-93b4d15eefeb'
+                CODECOV_TOKEN = '5ecccbfe-730c-4a46-801d-f6e539cd97e9'
             }
             steps {
-                sh 'mvn test'
+                script {
+                    docker.image('maven:3.5.3-jdk-10-slim').inside() {
+                        sh 'mvn test'
+                    }
+                }
             }
             post {
                 always {
@@ -22,12 +24,13 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Push to Maven') {
+            when {
+                expression { env.BRANCH_NAME in ['master', 'staging'] }
+            }
+
             steps {
-                configFileProvider([configFile(fileId: 'e634cf5d-12c6-41fa-82f9-8bbe8c594220', variable: 'MAVEN_GLOBAL_SETTINGS')]) {
-                    sh "mvn --batch-mode release:update-versions -DdevelopmentVersion=${env.BRANCH_NAME}-SNAPSHOT"
-                    sh "mvn -gs $MAVEN_GLOBAL_SETTINGS clean deploy -DskipTests -DaltDeploymentRepository=nexus-repository::default::${env.NEXUS_REPO}"
-                }
+                deployToMaven()
             }
         }
     }
