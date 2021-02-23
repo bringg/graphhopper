@@ -1,25 +1,24 @@
 package com.graphhopper;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.graphhopper.Penalties.Penalty;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.routing.weighting.AbstractWeighting;
-import com.graphhopper.routing.weighting.FastestWeighting;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class WeightingWithPenalties extends AbstractWeighting {
     private static final Logger logger = LoggerFactory.getLogger(WeightingWithPenalties.class);
 
-    private final Map<Integer, WayData> visitedEdgesCoordinates = new HashMap<>();
+    private final Cache<Integer, WayData> visitedEdgesCoordinates;
     private final Collection<Penalty> penalties;
     private final Weighting weightings;
 
@@ -28,6 +27,9 @@ public class WeightingWithPenalties extends AbstractWeighting {
         super(encoder);
         this.penalties = penalties;
         this.weightings = weightings;
+        this.visitedEdgesCoordinates = CacheBuilder.newBuilder()
+                .expireAfterWrite(8, TimeUnit.HOURS)
+                .build();
     }
 
     @Override
@@ -96,9 +98,9 @@ public class WeightingWithPenalties extends AbstractWeighting {
         WayData prevWayData;
         if (reverse) { //if reverse is true prevOrNextEdgeId has to be the next edgeId in the direction from start to end.
             prevWayData = wayData;
-            wayData = visitedEdgesCoordinates.get(prevOrNextEdgeId);
+            wayData = visitedEdgesCoordinates.getIfPresent(prevOrNextEdgeId);
         } else {
-            prevWayData = visitedEdgesCoordinates.get(prevOrNextEdgeId);
+            prevWayData = visitedEdgesCoordinates.getIfPresent(prevOrNextEdgeId);
         }
 
         double penaltyCost = .0;
