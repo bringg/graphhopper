@@ -28,7 +28,7 @@ public class WeightingWithPenalties extends AbstractWeighting {
         this.penalties = penalties;
         this.weightings = weightings;
         this.visitedEdgesCoordinates = CacheBuilder.newBuilder()
-                .expireAfterWrite(8, TimeUnit.HOURS)
+                .expireAfterWrite(1, TimeUnit.HOURS)
                 .build();
     }
 
